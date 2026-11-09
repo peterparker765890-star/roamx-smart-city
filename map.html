@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#080b18">
+  <title>ROAMX MAP | Navigate Smarter</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <link href="https://unpkg.com/maplibre-gl@5.6.2/dist/maplibre-gl.css" rel="stylesheet">
+  <script src="https://unpkg.com/maplibre-gl@5.6.2/dist/maplibre-gl.js"></script>
+
+  <link rel="stylesheet" href="map.css">
+</head>
+<body>
+  <header class="topbar">
+    <a href="index.html" class="logo">ROAM<span>X</span></a>
+    <div class="top-title">LIVE NAVIGATION <span class="live-dot"></span></div>
+    <a href="index.html" class="back">← HOME</a>
+  </header>
+
+  <main class="workspace">
+    <aside class="sidebar">
+      <div class="eyebrow">ROAMX / MOBILITY</div>
+      <h1>Find your<br><span>way forward.</span></h1>
+      <p class="intro">Explore your surroundings and discover smarter routes.</p>
+
+      <div class="status-card">
+        <span class="status-light"></span>
+        <div>
+          <strong id="locationStatus">Location not connected</strong>
+          <small id="locationText">Enable location to begin</small>
+        </div>
+      </div>
+
+      <label for="destination">DESTINATION</label>
+      <input id="destination" type="text" placeholder="Search a place or address">
+      <button id="searchBtn" class="primary">SEARCH DESTINATION →</button>
+
+      <div id="searchResults" class="results"></div>
+
+      <div class="route-fields">
+        <div>
+          <label>STARTING POINT</label>
+          <div id="originText" class="field-value">Your current location</div>
+        </div>
+        <div>
+          <label>DESTINATION</label>
+          <div id="destinationText" class="field-value">Not selected</div>
+        </div>
+      </div>
+
+      <button id="routeBtn" class="secondary" disabled>CALCULATE ROUTE</button>
+
+      <div class="route-info" id="routeInfo">
+        <div class="metric">
+          <small>DISTANCE</small>
+          <strong id="distance">--</strong>
+        </div>
+        <div class="metric">
+          <small>ESTIMATED TIME</small>
+          <strong id="duration">--</strong>
+        </div>
+      </div>
+
+      <button id="locateBtn" class="location-btn">⌖ USE MY LOCATION</button>
+      <p id="message" class="message">Waiting for map connection.</p>
+    </aside>
+
+    <section class="map-area">
+      <div class="map-toolbar">
+        <span><i class="live-dot"></i> MAP VIEW</span>
+        <button id="trafficBtn">TRAFFIC: OFF</button>
+      </div>
+      <div id="map"></div>
+      <div class="map-credit">MAP DATA © TOMTOM · MAP RENDERING © MAPLIBRE</div>
+    </section>
+  </main>
+
+  <script src="map.js"></script>
+</body>
+</html>
