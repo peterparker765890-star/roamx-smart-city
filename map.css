@@ -1,0 +1,395 @@
+:root {
+  --bg: #080b18;
+  --surface: #101629;
+  --surface-light: #151e35;
+  --violet: #8657ff;
+  --cyan: #27d9ed;
+  --text: #f5f7ff;
+  --muted: #929bb5;
+  --border: rgba(255,255,255,.09);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+.topbar {
+  height: 76px;
+  padding: 0 5%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(8,11,24,.96);
+  border-bottom: 1px solid var(--border);
+}
+
+.logo {
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: -2px;
+}
+
+.logo span {
+  color: var(--cyan);
+}
+
+.top-title {
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.live-dot, .status-light {
+  width: 8px;
+  height: 8px;
+  display: inline-block;
+  border-radius: 50%;
+  background: var(--cyan);
+  box-shadow: 0 0 12px var(--cyan);
+}
+
+.back {
+  font-size: 11px;
+  color: var(--cyan);
+  font-weight: 700;
+}
+
+.workspace {
+  min-height: calc(100vh - 76px);
+  display: grid;
+  grid-template-columns: 370px 1fr;
+}
+
+.sidebar {
+  padding: 38px 28px;
+  background: #0c1222;
+  border-right: 1px solid var(--border);
+  z-index: 2;
+}
+
+.eyebrow, label {
+  font-size: 9px;
+  color: var(--cyan);
+  font-weight: 800;
+  letter-spacing: 1.7px;
+}
+
+.sidebar h1 {
+  font-size: 37px;
+  line-height: 1.12;
+  letter-spacing: -2px;
+  margin-top: 25px;
+}
+
+.sidebar h1 span {
+  color: var(--violet);
+}
+
+.intro {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.8;
+  margin: 15px 0 25px;
+}
+
+.status-card {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 9px;
+  margin-bottom: 28px;
+}
+
+.status-card strong, .status-card small {
+  display: block;
+}
+
+.status-card strong {
+  font-size: 11px;
+}
+
+.status-card small {
+  color: var(--muted);
+  font-size: 10px;
+  margin-top: 5px;
+}
+
+.status-light {
+  flex-shrink: 0;
+}
+
+.sidebar label {
+  display: block;
+  margin-bottom: 10px;
+}
+
+input {
+  width: 100%;
+  padding: 15px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  outline: none;
+  background: var(--surface-light);
+  color: white;
+  font: inherit;
+  font-size: 12px;
+}
+
+input:focus {
+  border-color: var(--cyan);
+}
+
+button {
+  cursor: pointer;
+  font-family: inherit;
+  transition: .25s;
+}
+
+.primary, .secondary {
+  width: 100%;
+  padding: 15px;
+  border-radius: 7px;
+  margin-top: 12px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+
+.primary {
+  border: 0;
+  background: linear-gradient(110deg, var(--violet), #5540cb);
+  color: white;
+}
+
+.primary:hover {
+  box-shadow: 0 5px 25px #8657ff55;
+}
+
+.secondary {
+  background: transparent;
+  color: var(--cyan);
+  border: 1px solid #27d9ed55;
+}
+
+.secondary:hover:not(:disabled) {
+  background: #27d9ed15;
+}
+
+button:disabled {
+  opacity: .4;
+  cursor: not-allowed;
+}
+
+.results {
+  display: none;
+  margin-top: 10px;
+  max-height: 190px;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+}
+
+.result-item {
+  width: 100%;
+  text-align: left;
+  padding: 13px;
+  background: transparent;
+  color: white;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.result-item:hover {
+  background: #8657ff22;
+}
+
+.result-item strong, .result-item small {
+  display: block;
+}
+
+.result-item strong {
+  font-size: 11px;
+}
+
+.result-item small {
+  color: var(--muted);
+  font-size: 9px;
+  margin-top: 5px;
+}
+
+.route-fields {
+  margin-top: 30px;
+  padding: 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.route-fields > div + div {
+  margin-top: 20px;
+}
+
+.field-value {
+  color: var(--text);
+  font-size: 11px;
+  margin-top: 7px;
+  line-height: 1.5;
+}
+
+.route-info {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.metric {
+  padding: 15px;
+  background: var(--surface-light);
+  border-radius: 8px;
+}
+
+.metric small, .metric strong {
+  display: block;
+}
+
+.metric small {
+  color: var(--muted);
+  font-size: 8px;
+  letter-spacing: 1px;
+}
+
+.metric strong {
+  font-size: 18px;
+  margin-top: 9px;
+}
+
+.location-btn {
+  width: 100%;
+  padding: 14px;
+  margin-top: 20px;
+  background: #27d9ed12;
+  border: 1px solid #27d9ed55;
+  border-radius: 7px;
+  color: var(--cyan);
+  font-weight: 800;
+  font-size: 10px;
+}
+
+.message {
+  font-size: 10px;
+  color: var(--muted);
+  line-height: 1.7;
+  margin-top: 18px;
+}
+
+.map-area {
+  position: relative;
+  min-height: 600px;
+  background: #111827;
+}
+
+#map {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.map-toolbar {
+  position: absolute;
+  z-index: 5;
+  top: 18px;
+  left: 18px;
+  right: 18px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  pointer-events: none;
+}
+
+.map-toolbar > span {
+  padding: 12px 16px;
+  border-radius: 7px;
+  background: #080b18eF;
+  font-size: 9px;
+  letter-spacing: 1px;
+}
+
+.map-toolbar button {
+  pointer-events: auto;
+  padding: 12px 16px;
+  color: var(--cyan);
+  background: #080b18ef;
+  border: 1px solid #27d9ed55;
+  border-radius: 7px;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.map-credit {
+  position: absolute;
+  bottom: 10px;
+  right: 12px;
+  z-index: 5;
+  font-size: 8px;
+  color: #fff;
+  background: #080b18bb;
+  padding: 6px 9px;
+  border-radius: 4px;
+}
+
+@media(max-width: 850px) {
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .map-area {
+    min-height: 550px;
+  }
+}
+
+@media(max-width: 480px) {
+  .topbar {
+    padding: 0 5%;
+  }
+
+  .top-title {
+    font-size: 8px;
+    letter-spacing: 1px;
+  }
+
+  .sidebar {
+    padding: 28px 20px;
+  }
+
+  .map-area {
+    min-height: 470px;
+  }
+}
