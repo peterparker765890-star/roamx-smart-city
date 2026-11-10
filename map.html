@@ -2,242 +2,129 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#080d18">
-<title>ROAMX — Intelligent Navigation</title>
+<title>ROAMX — Intelligent Mobility</title>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
-
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 
 <style>
 :root{
---bg:#080d18;
---panel:#101827;
---panel2:#151f31;
---line:rgba(255,255,255,.09);
---text:#f3f7ff;
---muted:#8e9bb1;
---cyan:#36d9ed;
---purple:#9875ff;
---green:#42d69a;
---orange:#ffb45b;
---red:#ff637b;
---font:'DM Sans',sans-serif;
---display:'Space Grotesk',sans-serif;
+ --bg:#080d18;--panel:#111a2a;--panel2:#172337;
+ --line:rgba(255,255,255,.09);--text:#f3f7ff;
+ --muted:#91a0b7;--cyan:#36d9ed;--purple:#9875ff;
+ --green:#42d69a;--orange:#ffb45b;--red:#ff637b;
+ --font:'DM Sans',sans-serif;--display:'Space Grotesk',sans-serif;
 }
 *{box-sizing:border-box}
-body{
-margin:0;background:var(--bg);color:var(--text);
-font-family:var(--font);overflow:hidden;
-}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font)}
 button,input{font:inherit}
 button{cursor:pointer}
-.app{height:100vh;width:100%;display:grid;grid-template-columns:390px 1fr}
-.sidebar{
-height:100vh;overflow-y:auto;background:var(--bg);
-border-right:1px solid var(--line);z-index:5;
-padding:24px 22px 32px;
-scrollbar-width:thin;scrollbar-color:#28354b transparent;
-}
-.brand{display:flex;align-items:center;justify-content:space-between;margin-bottom:32px}
-.brand-left{display:flex;align-items:center;gap:11px}
-.logo{
-width:39px;height:39px;border-radius:12px;
-display:grid;place-items:center;
-background:linear-gradient(135deg,#2bd9ed,#7660ff);
-color:#07111d;font-weight:900;font-size:21px;
-}
-.brand-name{font:700 21px var(--display);letter-spacing:2px}
-.brand-sub{font-size:9px;letter-spacing:2.3px;color:var(--muted);margin-top:2px}
-.home-link{font-size:12px;color:var(--muted);text-decoration:none}
-.home-link:hover{color:var(--cyan)}
-.eyebrow{font-size:10px;letter-spacing:2.2px;color:var(--cyan);font-weight:800}
-.heading{font:700 31px/1.12 var(--display);margin:9px 0}
-.description{font-size:12px;line-height:1.7;color:var(--muted);margin:0 0 23px}
-.location-pill{
-display:flex;align-items:center;gap:10px;
-background:rgba(66,214,154,.07);
-border:1px solid rgba(66,214,154,.18);
-padding:11px 12px;border-radius:12px;margin-bottom:22px;
-}
-.live-dot{height:8px;width:8px;background:var(--green);border-radius:50%;box-shadow:0 0 12px var(--green)}
-.location-pill strong{font-size:11px;display:block}
-.location-pill small{display:block;color:var(--muted);font-size:10px;margin-top:3px}
-.section-label{font-size:10px;font-weight:800;letter-spacing:1.8px;color:var(--muted);margin:20px 0 9px}
-.search-box{
-display:flex;align-items:center;gap:8px;
-background:var(--panel);border:1px solid var(--line);
-border-radius:13px;padding:5px;
-}
-.search-box input{
-flex:1;min-width:0;background:transparent;border:0;outline:0;
-color:var(--text);padding:12px 9px;font-size:13px;
-}
-.search-box input::placeholder{color:#6f7d94}
-.primary-btn{
-border:0;border-radius:10px;padding:12px 14px;
-background:linear-gradient(120deg,#35d9ec,#71bdf8);
-color:#07111b;font-weight:900;font-size:11px;white-space:nowrap;
-}
-.primary-btn:disabled{opacity:.45;cursor:not-allowed}
-.search-results{display:none;margin-top:8px;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--panel)}
-.search-result{
-display:block;width:100%;text-align:left;border:0;border-bottom:1px solid var(--line);
-background:transparent;color:var(--text);padding:12px;cursor:pointer;
-}
-.search-result:hover{background:var(--panel2)}
-.search-result strong{display:block;font-size:12px}
-.search-result small{display:block;color:var(--muted);font-size:10px;margin-top:4px}
-.quick-search{display:flex;gap:7px;flex-wrap:wrap;margin-top:11px}
-.quick-chip{
-border:1px solid var(--line);background:var(--panel);color:#bdc9dc;
-padding:8px 10px;border-radius:20px;font-size:10px;
-}
-.quick-chip:hover{border-color:var(--cyan);color:var(--cyan)}
-.destination-info{
-display:flex;align-items:center;gap:10px;padding:13px;
-background:var(--panel);border:1px solid var(--line);border-radius:12px;
-margin-top:17px;
-}
-.destination-icon{
-height:31px;width:31px;display:grid;place-items:center;
-background:rgba(152,117,255,.15);color:var(--purple);border-radius:9px;
-}
-.destination-info small{font-size:9px;color:var(--muted);display:block;letter-spacing:1px}
-.destination-info strong{font-size:12px;display:block;margin-top:3px}
-.calculate{
-width:100%;margin-top:12px;padding:14px;border:0;border-radius:11px;
-background:var(--cyan);color:#06121b;font-size:11px;
-font-weight:900;letter-spacing:1px;
-}
+.app{height:100dvh;display:grid;grid-template-columns:390px minmax(0,1fr);overflow:hidden}
+.sidebar{padding:22px;overflow-y:auto;border-right:1px solid var(--line);background:var(--bg);z-index:5;scrollbar-width:thin}
+.brand{display:flex;justify-content:space-between;align-items:center;margin-bottom:30px}
+.brandleft{display:flex;align-items:center;gap:11px}
+.logo{width:39px;height:39px;border-radius:12px;background:linear-gradient(135deg,var(--cyan),var(--purple));display:grid;place-items:center;color:#07111d;font-weight:900;font-size:22px}
+.brandname{font:700 21px var(--display);letter-spacing:2px}
+.brandsub{font-size:9px;color:var(--muted);letter-spacing:2px}
+.home{font-size:11px;color:var(--muted);text-decoration:none}
+.eyebrow{color:var(--cyan);font-size:10px;font-weight:800;letter-spacing:2px}
+h1{font:700 32px/1.12 var(--display);margin:9px 0}
+.intro{font-size:12px;color:var(--muted);line-height:1.7;margin-bottom:20px}
+.location{display:flex;gap:10px;align-items:center;padding:12px;background:rgba(66,214,154,.07);border:1px solid rgba(66,214,154,.2);border-radius:12px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 12px var(--green);flex-shrink:0}
+.location strong{font-size:11px;display:block}
+.location small{font-size:10px;color:var(--muted);display:block;margin-top:3px}
+.label{font-size:10px;color:var(--muted);font-weight:800;letter-spacing:1.6px;margin:22px 0 9px}
+.search{display:flex;gap:6px;padding:5px;border:1px solid var(--line);background:var(--panel);border-radius:12px}
+.search input{flex:1;min-width:0;padding:12px 9px;background:transparent;border:0;outline:0;color:white;font-size:13px}
+.search input::placeholder{color:#72819a}
+.primary{background:var(--cyan);color:#07121b;border:0;border-radius:9px;padding:11px 13px;font-size:10px;font-weight:900;white-space:nowrap}
+.primary:disabled{opacity:.4;cursor:not-allowed}
+.results{display:none;margin-top:8px;background:var(--panel);border:1px solid var(--line);border-radius:11px;overflow:hidden}
+.result{display:block;width:100%;text-align:left;padding:12px;background:transparent;border:0;border-bottom:1px solid var(--line);color:white}
+.result:hover{background:var(--panel2)}
+.result strong{font-size:12px;display:block}
+.result small{font-size:10px;color:var(--muted);display:block;margin-top:4px}
+.chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:11px}
+.chip{border:1px solid var(--line);border-radius:20px;background:var(--panel);color:#c6d2e5;padding:8px 10px;font-size:10px}
+.chip:hover{border-color:var(--cyan);color:var(--cyan)}
+.destination{display:flex;align-items:center;gap:11px;padding:13px;background:var(--panel);border:1px solid var(--line);border-radius:12px;margin-top:17px}
+.desticon{width:32px;height:32px;border-radius:9px;background:rgba(152,117,255,.15);color:var(--purple);display:grid;place-items:center;font-size:18px}
+.destination small{display:block;color:var(--muted);font-size:9px;letter-spacing:1px}
+.destination strong{display:block;font-size:12px;margin-top:4px}
+.calculate{width:100%;padding:14px;margin-top:11px;background:linear-gradient(110deg,var(--cyan),#83caff);border:0;border-radius:10px;color:#07121b;font-weight:900;font-size:11px;letter-spacing:1px}
 .calculate:disabled{opacity:.35;cursor:not-allowed}
-.route-section{margin-top:24px}
-.route-heading{display:flex;justify-content:space-between;align-items:center}
-.route-heading strong{font:600 16px var(--display)}
-.route-heading span{font-size:10px;color:var(--muted)}
+.routehead{display:flex;justify-content:space-between;align-items:center;margin-top:24px}
+.routehead strong{font:600 16px var(--display)}
+.routehead span{font-size:10px;color:var(--muted)}
 .route-list{display:grid;gap:9px;margin-top:12px}
-.route-card{
-width:100%;text-align:left;background:var(--panel);
-color:var(--text);border:1px solid var(--line);
-border-radius:13px;padding:14px;transition:.18s;
-}
-.route-card:hover{border-color:rgba(54,217,237,.5);transform:translateY(-1px)}
-.route-card.selected{
-border-color:var(--cyan);
-background:linear-gradient(120deg,rgba(54,217,237,.11),rgba(152,117,255,.06));
-box-shadow:0 0 0 1px rgba(54,217,237,.12);
-}
-.route-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
-.route-name{font-size:12px;font-weight:800}
-.route-tag{font-size:9px;font-weight:900;color:var(--green);letter-spacing:.6px}
-.route-stats{display:flex;gap:17px;margin-top:11px}
-.route-stat strong{font:700 19px var(--display);display:block}
-.route-stat small{font-size:9px;color:var(--muted)}
-.route-note{font-size:10px;color:var(--muted);margin-top:10px;line-height:1.5}
-.route-empty{
-padding:18px;border:1px dashed var(--line);border-radius:12px;
-color:var(--muted);font-size:11px;line-height:1.7;
-}
-.start-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:13px}
-.start-btn,.demo-btn,.secondary-btn{
-border-radius:10px;padding:12px 9px;font-size:10px;font-weight:900;
-letter-spacing:.5px;
-}
-.start-btn{border:0;background:var(--green);color:#06170f}
-.demo-btn{border:1px solid rgba(152,117,255,.45);background:rgba(152,117,255,.12);color:#c8b8ff}
-.secondary-btn{border:1px solid var(--line);background:var(--panel2);color:var(--text)}
-.nav-controls{display:none;grid-template-columns:1fr 1fr;gap:8px;margin-top:9px}
-.nav-controls button{width:100%}
-.status-message{
-margin-top:14px;padding:11px 12px;border-radius:10px;
-background:rgba(255,255,255,.035);border:1px solid var(--line);
-font-size:10px;color:var(--muted);line-height:1.6;
-}
-.status-message[data-type="error"]{color:#ff9eac;border-color:rgba(255,99,123,.25)}
-.status-message[data-type="success"]{color:#82e8bc;border-color:rgba(66,214,154,.2)}
-.map-area{position:relative;min-width:0;height:100vh;background:#0b1320}
+.route-card{width:100%;text-align:left;background:var(--panel);color:white;border:1px solid var(--line);border-radius:12px;padding:13px}
+.route-card.selected{border-color:var(--cyan);background:linear-gradient(120deg,rgba(54,217,237,.12),rgba(152,117,255,.07));box-shadow:0 0 0 1px rgba(54,217,237,.1)}
+.route-card:hover{border-color:var(--cyan)}
+.route-top{display:flex;justify-content:space-between;gap:8px}
+.route-name{font-size:11px;font-weight:800}
+.route-tag{font-size:9px;color:var(--green);font-weight:900}
+.route-stats{display:flex;gap:22px;margin-top:12px}
+.stat strong{font:700 19px var(--display);display:block}
+.stat small{font-size:9px;color:var(--muted)}
+.route-note{font-size:10px;color:var(--muted);margin-top:9px}
+.empty{padding:16px;border:1px dashed var(--line);border-radius:11px;color:var(--muted);font-size:11px;line-height:1.7}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
+.start,.demo,.secondary{padding:12px 8px;border-radius:10px;font-size:10px;font-weight:900}
+.start{background:var(--green);color:#07170f;border:0}
+.demo{background:rgba(152,117,255,.13);color:#cbbdff;border:1px solid rgba(152,117,255,.4)}
+.secondary{background:var(--panel2);color:white;border:1px solid var(--line)}
+.actions button:disabled{opacity:.35;cursor:not-allowed}
+.navcontrols{display:none;grid-template-columns:1fr 1fr;gap:8px;margin-top:9px}
+.navcontrols button{width:100%}
+.message{margin-top:14px;padding:11px;border-radius:10px;background:rgba(255,255,255,.035);border:1px solid var(--line);font-size:10px;color:var(--muted);line-height:1.6}
+.message[data-type=error]{color:#ff9eac}
+.message[data-type=success]{color:#82e8bc}
+.maparea{position:relative;min-width:0;background:#0b1320}
 #map{position:absolute;inset:0}
-.maplibregl-ctrl-group{background:#101827!important;border:1px solid var(--line)!important}
+.maplibregl-ctrl-group{background:#111a2a!important;border:1px solid var(--line)!important}
 .maplibregl-ctrl button span{filter:invert(1)}
-.map-topbar{
-position:absolute;top:18px;left:18px;right:18px;
-display:flex;justify-content:space-between;align-items:flex-start;
-pointer-events:none;z-index:3;
-}
-.map-topbar>*{pointer-events:auto}
-.map-chip{
-background:rgba(9,16,29,.91);border:1px solid var(--line);
-backdrop-filter:blur(15px);border-radius:12px;padding:11px 14px;
-font-size:10px;color:#dce7f8;display:flex;align-items:center;gap:9px;
-}
-.map-chip strong{font-size:11px}
-.map-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
-.map-action{
-background:rgba(9,16,29,.92);color:#dce7f8;border:1px solid var(--line);
-padding:11px 13px;border-radius:10px;font-size:10px;font-weight:800;
-backdrop-filter:blur(15px);
-}
-.map-action.active{border-color:var(--cyan);color:var(--cyan)}
-.map-bottom{
-position:absolute;bottom:20px;left:18px;right:18px;
-display:flex;justify-content:space-between;align-items:flex-end;
-gap:12px;pointer-events:none;z-index:3;
-}
-.map-bottom>*{pointer-events:auto}
-.map-metrics{
-display:flex;gap:22px;padding:14px 17px;
-background:rgba(9,16,29,.93);border:1px solid var(--line);
-border-radius:13px;backdrop-filter:blur(15px);
-}
+.topbar{position:absolute;z-index:3;top:16px;left:16px;right:16px;display:flex;justify-content:space-between;gap:10px;pointer-events:none}
+.topbar>*{pointer-events:auto}
+.mapchip,.mapbtn{background:rgba(8,14,26,.93);border:1px solid var(--line);backdrop-filter:blur(15px);border-radius:11px;padding:11px 13px;color:#e4edfa;font-size:10px}
+.mapchip{display:flex;gap:9px;align-items:center}
+.mapchip strong{font-size:11px}
+.mapbuttons{display:flex;gap:7px}
+.mapbtn{font-weight:800}
+.mapbtn.active{border-color:var(--cyan);color:var(--cyan)}
+.bottom{position:absolute;z-index:3;bottom:17px;left:16px;right:16px;display:flex;justify-content:space-between;align-items:end;gap:10px;pointer-events:none}
+.bottom>*{pointer-events:auto}
+.metrics{display:flex;gap:22px;padding:13px 16px;background:rgba(8,14,26,.94);border:1px solid var(--line);border-radius:12px;backdrop-filter:blur(15px)}
 .metric small{display:block;color:var(--muted);font-size:9px;letter-spacing:1px}
 .metric strong{display:block;font:700 19px var(--display);margin-top:4px}
-.map-credit{font-size:9px;color:#8998ae;background:rgba(9,16,29,.8);padding:8px 10px;border-radius:8px}
-.vehicle-marker{
-width:31px;height:31px;border-radius:50%;
-background:var(--cyan);border:3px solid white;
-box-shadow:0 0 0 8px rgba(54,217,237,.17),0 0 25px rgba(54,217,237,.7);
-display:grid;place-items:center;
-}
-.vehicle-marker span{
-width:0;height:0;border-left:6px solid transparent;
-border-right:6px solid transparent;border-bottom:13px solid #07131d;
-transform:translateY(-2px);
-}
-.destination-marker{
-width:27px;height:27px;border-radius:50% 50% 50% 0;
-transform:rotate(-45deg);background:var(--purple);
-border:3px solid white;box-shadow:0 0 20px rgba(152,117,255,.65);
-}
-.destination-marker:after{
-content:"";position:absolute;width:7px;height:7px;border-radius:50%;background:white;top:7px;left:7px;
-}
+.credit{font-size:9px;color:#9aa8bc;background:rgba(8,14,26,.8);padding:8px;border-radius:8px}
+.vehicle{width:30px;height:30px;border-radius:50%;background:var(--cyan);border:3px solid white;box-shadow:0 0 0 8px rgba(54,217,237,.18),0 0 22px rgba(54,217,237,.7);display:grid;place-items:center}
+.vehicle:after{content:"";width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:13px solid #07131d}
+.pin{width:27px;height:27px;background:var(--purple);border:3px solid white;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 0 15px #9875ff}
 @media(max-width:850px){
-body{overflow:auto}
-.app{height:auto;min-height:100vh;display:flex;flex-direction:column}
-.sidebar{height:auto;max-height:none;overflow:visible;border-right:0;border-bottom:1px solid var(--line);padding:19px 16px}
-.brand{margin-bottom:20px}
-.heading{font-size:27px}
-.map-area{height:65vh;min-height:420px}
-#map{position:absolute}
-.map-topbar{top:10px;left:10px;right:10px}
-.map-bottom{bottom:10px;left:10px;right:10px}
-.map-metrics{gap:13px;padding:10px}
-.metric strong{font-size:16px}
-.map-credit{display:none}
+ body{overflow:auto}
+ .app{height:auto;min-height:100dvh;display:flex;flex-direction:column;overflow:visible}
+ .sidebar{overflow:visible;border-right:0;border-bottom:1px solid var(--line);padding:18px 15px}
+ h1{font-size:28px}
+ .maparea{height:62dvh;min-height:400px}
+ .topbar{top:9px;left:9px;right:9px}
+ .bottom{bottom:9px;left:9px;right:9px}
+ .metrics{gap:12px;padding:10px}
+ .metric strong{font-size:16px}
+ .credit{display:none}
 }
-@media(max-width:450px){
-.search-box{flex-wrap:wrap}
-.search-box input{min-width:100%}
-.search-box .primary-btn{width:100%}
-.map-actions{gap:5px}
-.map-action{padding:9px;font-size:9px}
-.map-metrics{gap:9px}
-.metric small{font-size:8px}
-.metric strong{font-size:14px}
+@media(max-width:430px){
+ .search{flex-wrap:wrap}
+ .search input{min-width:100%}
+ .search .primary{width:100%}
+ .mapbtn{padding:9px;font-size:9px}
+ .metrics{gap:9px}
+ .metric small{font-size:8px}
+ .metric strong{font-size:14px}
 }
 </style>
 </head>
@@ -245,113 +132,97 @@ body{overflow:auto}
 <body>
 <div class="app">
 <aside class="sidebar">
+
 <header class="brand">
-<div class="brand-left">
-<div class="logo">R</div>
-<div>
-<div class="brand-name">ROAMX</div>
-<div class="brand-sub">INTELLIGENT MOBILITY</div>
-</div>
-</div>
-<a class="home-link" href="index.html">← HOME</a>
+ <div class="brandleft">
+  <div class="logo">R</div>
+  <div><div class="brandname">ROAMX</div><div class="brandsub">INTELLIGENT MOBILITY</div></div>
+ </div>
+ <a class="home" href="index.html">← HOME</a>
 </header>
 
 <div class="eyebrow">ROAMX / NAVIGATION</div>
-<h1 class="heading">Your city.<br>Your route.</h1>
-<p class="description">Discover places, compare intelligent routes and navigate with live traffic awareness.</p>
+<h1>Your city.<br>Your route.</h1>
+<p class="intro">Explore places, compare routes and navigate with traffic-aware intelligence.</p>
 
-<div class="location-pill">
-<span class="live-dot"></span>
-<div>
-<strong id="locationStatus">Connecting location</strong>
-<small id="locationText">Waiting for GPS permission</small>
-</div>
+<div class="location">
+ <span class="dot"></span>
+ <div><strong id="locationStatus">Connecting GPS</strong><small id="locationText">Waiting for location permission</small></div>
 </div>
 
-<div class="section-label">WHERE DO YOU WANT TO GO?</div>
-<div class="search-box">
-<input id="destination" type="search" placeholder="Search shops, towns, streets, places..." autocomplete="off">
-<button class="primary-btn" id="searchBtn">SEARCH →</button>
+<div class="label">WHERE DO YOU WANT TO GO?</div>
+<div class="search">
+ <input id="destination" placeholder="Search shops, towns, streets, places..." autocomplete="off">
+ <button class="primary" id="searchBtn">SEARCH →</button>
 </div>
-<div class="search-results" id="searchResults"></div>
+<div class="results" id="results"></div>
 
-<div class="quick-search">
-<button class="quick-chip" data-query="Restaurants">Restaurants</button>
-<button class="quick-chip" data-query="Hospitals">Hospitals</button>
-<button class="quick-chip" data-query="Petrol pumps">Fuel</button>
-<button class="quick-chip" data-query="Shopping malls">Shopping</button>
-<button class="quick-chip" data-query="Coffee shops">Coffee</button>
+<div class="chips">
+ <button class="chip" data-q="Restaurants">Restaurants</button>
+ <button class="chip" data-q="Hospitals">Hospitals</button>
+ <button class="chip" data-q="Petrol pumps">Fuel</button>
+ <button class="chip" data-q="Shopping malls">Shopping</button>
+ <button class="chip" data-q="Coffee shops">Coffee</button>
+ <button class="chip" data-q="Bus stations">Bus stations</button>
 </div>
 
-<div class="destination-info">
-<div class="destination-icon">⌖</div>
-<div>
-<small>SELECTED DESTINATION</small>
-<strong id="destinationText">Choose a place to begin</strong>
-</div>
+<div class="destination">
+ <div class="desticon">⌖</div>
+ <div><small>SELECTED DESTINATION</small><strong id="destinationName">Choose a place to begin</strong></div>
 </div>
 
 <button class="calculate" id="routeBtn" disabled>FIND MY BEST ROUTES →</button>
 
-<section class="route-section">
-<div class="route-heading">
-<strong>Choose your route</strong>
-<span id="routeCount">0 OPTIONS</span>
+<div class="routehead">
+ <strong>Choose your route</strong><span id="routeCount">0 OPTIONS</span>
 </div>
 <div class="route-list" id="routeList">
-<div class="route-empty">Search for a destination and calculate routes. ROAMX will compare available options for you.</div>
-</div>
-</section>
-
-<div class="start-row">
-<button class="start-btn" id="startBtn" disabled>START LIVE GPS</button>
-<button class="demo-btn" id="demoBtn" disabled>▶ DEMO MODE</button>
+ <div class="empty">Search for any destination. ROAMX will compare available routes.</div>
 </div>
 
-<div class="nav-controls" id="navControls">
-<button class="secondary-btn" id="pauseBtn">PAUSE</button>
-<button class="secondary-btn" id="endBtn">END JOURNEY</button>
+<div class="actions">
+ <button class="start" id="startBtn" disabled>START LIVE GPS</button>
+ <button class="demo" id="demoBtn" disabled>▶ DEMO MODE</button>
+</div>
+<div class="navcontrols" id="navControls">
+ <button class="secondary" id="pauseBtn">PAUSE</button>
+ <button class="secondary" id="endBtn">END JOURNEY</button>
 </div>
 
-<div class="status-message" id="message">ROAMX is ready. Allow location access to find routes from your current position.</div>
+<div class="message" id="message">ROAMX is ready. Allow GPS access to calculate routes from your current position.</div>
 </aside>
 
-<main class="map-area">
-<div id="map"></div>
-
-<div class="map-topbar">
-<div class="map-chip">
-<span class="live-dot"></span>
-<div><strong>ROAMX LIVE MAP</strong><br><span id="mapMode">MAP READY</span></div>
-</div>
-<div class="map-actions">
-<button class="map-action" id="trafficBtn">TRAFFIC OFF</button>
-<button class="map-action" id="locateBtn">⌖ MY LOCATION</button>
-</div>
-</div>
-
-<div class="map-bottom">
-<div class="map-metrics">
-<div class="metric"><small>DISTANCE LEFT</small><strong id="distance">--</strong></div>
-<div class="metric"><small>ARRIVAL</small><strong id="eta">--</strong></div>
-<div class="metric"><small>TRAVEL TIME</small><strong id="duration">--</strong></div>
-</div>
-<div class="map-credit">MAP DATA © TOMTOM · MAPLIBRE</div>
-</div>
+<main class="maparea">
+ <div id="map"></div>
+ <div class="topbar">
+  <div class="mapchip"><span class="dot"></span><div><strong>ROAMX LIVE MAP</strong><br><span id="mapMode">MAP READY</span></div></div>
+  <div class="mapbuttons">
+   <button class="mapbtn" id="trafficBtn">TRAFFIC OFF</button>
+   <button class="mapbtn" id="locateBtn">⌖ MY LOCATION</button>
+  </div>
+ </div>
+ <div class="bottom">
+  <div class="metrics">
+   <div class="metric"><small>DISTANCE LEFT</small><strong id="distance">--</strong></div>
+   <div class="metric"><small>ARRIVAL</small><strong id="eta">--</strong></div>
+   <div class="metric"><small>TRAVEL TIME</small><strong id="duration">--</strong></div>
+  </div>
+  <div class="credit">MAP DATA © TOMTOM · MAPLIBRE</div>
+ </div>
 </main>
 </div>
 
 <script>
 "use strict";
 
-/* =========================================================
-   ROAMX PREMIUM NAVIGATION ENGINE
-   TomTom Orbis + MapLibre
-========================================================= */
+/* =========================================
+   ROAMX — NAVIGATION ENGINE
+   TomTom Search + Orbis Routing + MapLibre
+========================================= */
 
 const TOMTOM_KEY = "qW1DnHeAfDf4JyBXEDU3NkcE4XU3xQjv";
 const API = "https://api.tomtom.com";
-const DEFAULT_CENTER = [76.9558, 11.0168];
+const DEFAULT_CENTER = [76.9558,11.0168];
 
 const $ = id => document.getElementById(id);
 
@@ -367,871 +238,971 @@ let trafficOn = false;
 let watchId = null;
 let navMode = "idle";
 let demoTimer = null;
-let demoStart = 0;
 let demoElapsed = 0;
+let demoStarted = 0;
 let lastReroute = 0;
 let offRouteCount = 0;
-let routeLength = 0;
-let currentTravelled = 0;
 let searchBusy = false;
 let routeBusy = false;
+let gpsAccuracy = null;
 
 const ROUTE_SOURCE = "roamx-routes";
 const TRAFFIC_SOURCE = "roamx-traffic";
 
-/* ---------------- HELPERS ---------------- */
+/* BASIC HELPERS */
 
-function message(text, type = "normal") {
-  $("message").textContent = text;
-  $("message").dataset.type = type;
+function say(text,type="normal"){
+ $("message").textContent=text;
+ $("message").dataset.type=type;
 }
 
-function fmtDistance(m) {
-  if (!Number.isFinite(m)) return "--";
-  return m >= 1000 ? (m / 1000).toFixed(1) + " km" : Math.round(m) + " m";
+function fmtDistance(m){
+ if(!Number.isFinite(m))return "--";
+ return m>=1000?(m/1000).toFixed(1)+" km":Math.round(m)+" m";
 }
 
-function fmtDuration(s) {
-  if (!Number.isFinite(s)) return "--";
-  const min = Math.round(s / 60);
-  if (min < 60) return min + " min";
-  return Math.floor(min / 60) + " hr " + (min % 60) + " min";
+function fmtDuration(seconds){
+ if(!Number.isFinite(seconds))return "--";
+ const mins=Math.round(seconds/60);
+ if(mins<60)return mins+" min";
+ return Math.floor(mins/60)+" hr "+(mins%60)+" min";
 }
 
-function etaText(seconds) {
-  return new Date(Date.now() + seconds * 1000)
-    .toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
+function arrivalTime(seconds){
+ return new Date(Date.now()+seconds*1000)
+  .toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
 }
 
-async function getJSON(url) {
-  const response = await fetch(url, {
-    headers: {"TomTom-Api-Version":"2"}
-  });
-  if (!response.ok) {
-    let detail = "";
-    try {
-      const body = await response.json();
-      detail = body?.detailedError?.message || body?.error?.description || body?.message || "";
-    } catch (_) {}
-    throw new Error(detail || "Service returned " + response.status);
-  }
-  return response.json();
+function setLocation(title,detail){
+ $("locationStatus").textContent=title;
+ $("locationText").textContent=detail;
 }
 
-function setLocationStatus(title, detail) {
-  $("locationStatus").textContent = title;
-  $("locationText").textContent = detail;
+function apiUrl(path,params={}){
+ const url=new URL(API+path);
+ Object.entries(params).forEach(([k,v])=>{
+  if(v!==undefined&&v!==null)url.searchParams.set(k,String(v));
+ });
+ return url;
 }
 
-function updateMapMode(text) {
-  $("mapMode").textContent = text;
+async function fetchJSON(url,headers={}){
+ const response=await fetch(url,{
+  method:"GET",
+  headers:{"Accept":"application/json",...headers}
+ });
+ if(!response.ok){
+  let detail="";
+  try{
+   const body=await response.json();
+   detail=body?.detailedError?.message||
+    body?.error?.description||body?.message||"";
+  }catch(_){}
+  throw new Error(detail||"TomTom service error "+response.status);
+ }
+ return response.json();
 }
 
-/* ---------------- MAP ---------------- */
+/* MAP INITIALIZATION */
 
-function initMap() {
-  map = new maplibregl.Map({
-    container:"map",
-    center:DEFAULT_CENTER,
-    zoom:12,
-    minZoom:3,
-    maxZoom:20,
-    style:{
-      version:8,
-      sources:{
-        "tomtom-base":{
-          type:"raster",
-          tiles:[
-            `${API}/maps/orbis/display/raster/tile/{z}/{x}/{y}?apiVersion=2&style=street-dark&tileSize=256&key=${encodeURIComponent(TOMTOM_KEY)}`
-          ],
-          tileSize:256,
-          attribution:"© TomTom"
-        }
-      },
-      layers:[{
-        id:"tomtom-base-layer",
-        type:"raster",
-        source:"tomtom-base"
-      }]
-    },
-    attributionControl:false
-  });
-
-  map.addControl(new maplibregl.NavigationControl(), "bottom-right");
-  map.addControl(new maplibregl.AttributionControl({compact:true}), "bottom-left");
-
-  map.on("load", () => {
-    map.addSource(ROUTE_SOURCE, {
-      type:"geojson",
-      data:{type:"FeatureCollection",features:[]}
-    });
-
-    map.addLayer({
-      id:"roamx-route-outline",
-      type:"line",
-      source:ROUTE_SOURCE,
-      layout:{"line-join":"round","line-cap":"round"},
-      paint:{
-        "line-color":"#07121f",
-        "line-width":["case",["get","selected"],11,7],
-        "line-opacity":["case",["get","selected"],.95,.55]
-      }
-    });
-
-    map.addLayer({
-      id:"roamx-route-line",
-      type:"line",
-      source:ROUTE_SOURCE,
-      layout:{"line-join":"round","line-cap":"round"},
-      paint:{
-        "line-color":["case",["get","selected"],"#36d9ed","#9875ff"],
-        "line-width":["case",["get","selected"],6,3],
-        "line-opacity":["case",["get","selected"],1,.75]
-      }
-    });
-
-    map.on("click","roamx-route-line",event => {
-      const id = event.features?.[0]?.properties?.routeId;
-      const index = routes.findIndex(r => String(r.id) === String(id));
-      if (index >= 0) selectRoute(index);
-    });
-
-    locateUser();
-  });
-
-  map.on("error", event => console.error("ROAMX map error", event.error || event));
-}
-
-/* ---------------- LOCATION ---------------- */
-
-function locateUser() {
-  if (!navigator.geolocation) {
-    setLocationStatus("GPS unavailable","This browser does not support geolocation");
-    message("Your browser does not support GPS.","error");
-    return;
-  }
-
-  setLocationStatus("Connecting GPS","Requesting your current position");
-
-  navigator.geolocation.getCurrentPosition(
-    position => {
-      currentPosition = [position.coords.longitude, position.coords.latitude];
-      updateUserMarker(currentPosition, 0);
-      map.flyTo({center:currentPosition,zoom:15,duration:1000});
-      setLocationStatus("Location connected","Your current position is available");
-      message("Your current location is ready.","success");
-      $("startBtn").disabled = !routes.length;
-      $("routeBtn").disabled = !destination;
-    },
-    error => {
-      console.warn("ROAMX location error",error);
-      const text = error.code === 1
-        ? "Allow location access in browser settings"
-        : "GPS signal unavailable. Try again";
-      setLocationStatus("Location unavailable",text);
-      message(text,"error");
-    },
-    {enableHighAccuracy:true,timeout:20000,maximumAge:5000}
-  );
-}
-
-function createVehicleElement() {
-  const node = document.createElement("div");
-  node.className = "vehicle-marker";
-  node.innerHTML = "<span></span>";
-  return node;
-}
-
-function updateUserMarker(position, heading = 0) {
-  if (!map || !position) return;
-  if (!userMarker) {
-    userMarker = new maplibregl.Marker({
-      element:createVehicleElement(),
-      anchor:"center",
-      rotationAlignment:"map"
-    }).setLngLat(position).addTo(map);
-  } else {
-    userMarker.setLngLat(position);
-  }
-  const el = userMarker.getElement();
-  el.style.transform = `translate(-50%,-50%) rotate(${heading}deg)`;
-}
-
-function bearing(a,b) {
-  const rad = v => v * Math.PI / 180;
-  const deg = v => (v * 180 / Math.PI + 360) % 360;
-  const y = Math.sin(rad(b[0]-a[0])) * Math.cos(rad(b[1]));
-  const x = Math.cos(rad(a[1]))*Math.sin(rad(b[1])) -
-    Math.sin(rad(a[1]))*Math.cos(rad(b[1]))*Math.cos(rad(b[0]-a[0]));
-  return deg(Math.atan2(y,x));
-}
-
-/* ---------------- SEARCH ---------------- */
-
-async function searchPlace(queryOverride) {
-  const query = (queryOverride || $("destination").value).trim();
-  if (!query) {
-    message("Enter a destination first.","error");
-    $("destination").focus();
-    return;
-  }
-  if (searchBusy) return;
-
-  searchBusy = true;
-  $("searchBtn").disabled = true;
-  $("searchBtn").textContent = "SEARCHING...";
-  $("searchResults").style.display = "none";
-  message("Finding places matching " + query + "...");
-
-  try {
-    const url = new URL(`${API}/maps/orbis/places/geocode`);
-    url.searchParams.set("query",query);
-    url.searchParams.set("maxResults","8");
-    url.searchParams.set("countryCodesIso2","IN");
-    url.searchParams.set("apiVersion","2");
-    if (currentPosition) {
-      url.searchParams.set("position",`${currentPosition[0]},${currentPosition[1]}`);
+function initMap(){
+ map=new maplibregl.Map({
+  container:"map",
+  center:DEFAULT_CENTER,
+  zoom:12,
+  minZoom:3,
+  maxZoom:20,
+  style:{
+   version:8,
+   sources:{
+    tomtom:{
+     type:"raster",
+     tiles:[
+      API+"/maps/orbis/display/raster/tile/{z}/{x}/{y}?apiVersion=2&style=street-dark&tileSize=256&key="+encodeURIComponent(TOMTOM_KEY)
+     ],
+     tileSize:256,
+     attribution:"© TomTom"
     }
-    url.searchParams.set("key",TOMTOM_KEY);
+   },
+   layers:[{
+    id:"tomtom-base",
+    type:"raster",
+    source:"tomtom"
+   }]
+  },
+  attributionControl:false
+ });
 
-    const data = await getJSON(url.toString());
-    const results = (data.results || []).filter(r =>
-      Array.isArray(r.position?.coordinates) &&
-      r.position.coordinates.length >= 2
+ map.addControl(new maplibregl.NavigationControl(),"bottom-right");
+ map.addControl(new maplibregl.AttributionControl({compact:true}),"bottom-left");
+
+ map.on("load",()=>{
+  map.addSource(ROUTE_SOURCE,{
+   type:"geojson",
+   data:{type:"FeatureCollection",features:[]}
+  });
+
+  map.addLayer({
+   id:"route-outline",
+   type:"line",
+   source:ROUTE_SOURCE,
+   layout:{"line-join":"round","line-cap":"round"},
+   paint:{
+    "line-color":"#07121f",
+    "line-width":["case",["get","selected"],10,6],
+    "line-opacity":["case",["get","selected"],1,.65]
+   }
+  });
+
+  map.addLayer({
+   id:"route-line",
+   type:"line",
+   source:ROUTE_SOURCE,
+   layout:{"line-join":"round","line-cap":"round"},
+   paint:{
+    "line-color":["case",["get","selected"],"#36d9ed","#9875ff"],
+    "line-width":["case",["get","selected"],6,3],
+    "line-opacity":["case",["get","selected"],1,.7]
+   }
+  });
+
+  map.on("click","route-line",e=>{
+   const id=e.features?.[0]?.properties?.routeId;
+   const index=routes.findIndex(r=>r.id===id);
+   if(index>=0)selectRoute(index);
+  });
+
+  locateUser();
+ });
+
+ map.on("error",e=>console.warn("Map rendering:",e.error||e));
+}
+
+/* LOCATION */
+
+function vehicleElement(){
+ const el=document.createElement("div");
+ el.className="vehicle";
+ return el;
+}
+
+function updateVehicle(position,heading=0){
+ if(!position||!map)return;
+ if(!userMarker){
+  userMarker=new maplibregl.Marker({
+   element:vehicleElement(),anchor:"center"
+  }).setLngLat(position).addTo(map);
+ }
+ userMarker.setLngLat(position);
+ userMarker.getElement().style.transform=
+  "translate(-50%,-50%) rotate("+heading+"deg)";
+}
+
+function locateUser(){
+ if(!navigator.geolocation){
+  setLocation("GPS unavailable","This browser does not support location");
+  return;
+ }
+ setLocation("Connecting GPS","Requesting your current position");
+ navigator.geolocation.getCurrentPosition(
+  pos=>{
+   currentPosition=[pos.coords.longitude,pos.coords.latitude];
+   gpsAccuracy=pos.coords.accuracy;
+   updateVehicle(currentPosition);
+   map.flyTo({center:currentPosition,zoom:15,duration:900});
+   setLocation("Location connected","GPS accuracy ±"+Math.round(gpsAccuracy)+" m");
+   $("routeBtn").disabled=!destination;
+   say("Your current location is ready.","success");
+  },
+  err=>{
+   const reason=err.code===1
+    ?"Location permission denied. Allow GPS in browser settings."
+    :"GPS unavailable. Check your device location and try again.";
+   setLocation("Location unavailable",reason);
+   say(reason,"error");
+  },
+  {enableHighAccuracy:true,timeout:20000,maximumAge:5000}
+ );
+}
+
+/* DESTINATION SEARCH
+   POI Search for businesses/places.
+   Geocode fallback for addresses and towns.
+*/
+
+function normalizeResult(r){
+ const p=r.position||{};
+ const lat=Number(p.lat);
+ const lon=Number(p.lon);
+ if(!Number.isFinite(lat)||!Number.isFinite(lon))return null;
+ return {
+  name:r.poi?.name||r.address?.municipality||
+   r.address?.freeformAddress||"Unnamed place",
+  address:r.address?.freeformAddress||
+   r.address?.municipality||"Location result",
+  position:[lon,lat]
+ };
+}
+
+async function searchPOI(query){
+ const url=apiUrl(
+  "/maps/orbis/places/poiSearch/"+encodeURIComponent(query)+".json",
+  {key:TOMTOM_KEY,apiVersion:1,limit:8,countryset:"IN"}
+ );
+ if(currentPosition){
+  url.searchParams.set("lat",currentPosition[1]);
+  url.searchParams.set("lon",currentPosition[0]);
+ }
+ const data=await fetchJSON(url);
+ return (data.results||[]).map(normalizeResult).filter(Boolean);
+}
+
+async function searchAddress(query){
+ const url=apiUrl("/maps/orbis/places/geocode",{
+  query,
+  maxResults:8,
+  countryCodesIso2:"IN"
+ });
+ if(currentPosition){
+  url.searchParams.set("position",currentPosition[0]+","+currentPosition[1]);
+ }
+ const data=await fetchJSON(url,{
+  "TomTom-Api-Version":"2",
+  "TomTom-Api-Key":TOMTOM_KEY,
+  "Attributes":"results"
+ });
+ return (data.results||[]).map(normalizeResult).filter(Boolean);
+}
+
+async function searchPlace(override){
+ const query=(override||$("destination").value).trim();
+ if(!query){say("Enter a place to search for.","error");return;}
+ if(searchBusy)return;
+
+ searchBusy=true;
+ $("searchBtn").disabled=true;
+ $("searchBtn").textContent="SEARCHING...";
+ $("results").style.display="none";
+ say("Searching for "+query+"...");
+
+ try{
+  let found=[];
+  let poiError=null;
+
+  try{
+   found=await searchPOI(query);
+  }catch(e){
+   poiError=e;
+   console.warn("POI search:",e);
+  }
+
+  if(!found.length){
+   try{
+    found=await searchAddress(query);
+   }catch(e){
+    if(poiError)throw new Error(
+     "Place search failed. "+e.message+
+     " (POI search: "+poiError.message+")"
     );
-
-    renderSearchResults(results);
-    message(results.length ? `${results.length} places found. Choose your destination.` : "No matching places found.",results.length ? "success":"error");
-  } catch (error) {
-    console.error(error);
-    message("Place search failed: " + error.message,"error");
-  } finally {
-    searchBusy = false;
-    $("searchBtn").disabled = false;
-    $("searchBtn").textContent = "SEARCH →";
+    throw e;
+   }
   }
+
+  renderResults(found);
+  say(found.length?
+   found.length+" matching places found. Choose one.":
+   "No results found. Try a more specific place name.",
+   found.length?"success":"error");
+ }catch(e){
+  console.error("Search error:",e);
+  say("Search failed: "+e.message,"error");
+ }finally{
+  searchBusy=false;
+  $("searchBtn").disabled=false;
+  $("searchBtn").textContent="SEARCH →";
+ }
 }
 
-function renderSearchResults(results) {
-  const box = $("searchResults");
-  box.replaceChildren();
+function renderResults(items){
+ const box=$("results");
+ box.replaceChildren();
 
-  results.forEach(result => {
-    const name = result.poi?.name ||
-      result.address?.freeformAddress ||
-      result.address?.municipality ||
-      "Unknown place";
-    const address = result.address?.freeformAddress || result.type || "Place result";
-    const coords = result.position.coordinates;
+ items.forEach(item=>{
+  const btn=document.createElement("button");
+  btn.className="result";
+  btn.type="button";
 
-    const button = document.createElement("button");
-    button.className = "search-result";
-    button.type = "button";
+  const name=document.createElement("strong");
+  name.textContent=item.name;
 
-    const strong = document.createElement("strong");
-    strong.textContent = name;
-    const small = document.createElement("small");
-    small.textContent = address;
+  const address=document.createElement("small");
+  address.textContent=item.address;
 
-    button.append(strong,small);
-    button.addEventListener("click",() => chooseDestination(
-      [Number(coords[0]),Number(coords[1])],name
-    ));
-    box.appendChild(button);
+  btn.append(name,address);
+  btn.addEventListener("click",()=>chooseDestination(item));
+  box.appendChild(btn);
+ });
+
+ box.style.display=items.length?"block":"none";
+}
+
+function chooseDestination(item){
+ stopNavigation(false);
+
+ destination=item.position;
+ destinationName=item.name;
+
+ $("destination").value=item.name;
+ $("destinationName").textContent=item.name;
+ $("results").style.display="none";
+
+ if(destinationMarker)destinationMarker.remove();
+
+ const el=document.createElement("div");
+ el.className="pin";
+ destinationMarker=new maplibregl.Marker({
+  element:el,anchor:"bottom"
+ }).setLngLat(destination).addTo(map);
+
+ $("routeList").innerHTML=
+  '<div class="empty">Destination selected. Calculate routes to compare your options.</div>';
+ $("routeCount").textContent="READY";
+ $("routeBtn").disabled=!currentPosition;
+ $("startBtn").disabled=true;
+ $("demoBtn").disabled=true;
+
+ map.flyTo({center:destination,zoom:15,duration:900});
+ say("Destination selected: "+item.name,"success");
+}
+
+/* ROUTE CALCULATION */
+
+function routeCoordinates(route){
+ const output=[];
+ (route.legs||[]).forEach(leg=>{
+  (leg.points||[]).forEach(p=>{
+   const lon=Number(p.longitude);
+   const lat=Number(p.latitude);
+   if(Number.isFinite(lon)&&Number.isFinite(lat)){
+    const last=output[output.length-1];
+    if(!last||last[0]!==lon||last[1]!==lat)output.push([lon,lat]);
+   }
   });
-
-  box.style.display = results.length ? "block" : "none";
+ });
+ return output;
 }
 
-function chooseDestination(position,name) {
-  stopNavigation(false);
-  destination = position;
-  destinationName = name;
+async function requestRoute(type,alternatives){
+ const start=currentPosition[1]+","+currentPosition[0];
+ const end=destination[1]+","+destination[0];
 
-  $("destination").value = name;
-  $("destinationText").textContent = name;
-  $("searchResults").style.display = "none";
-
-  if (destinationMarker) destinationMarker.remove();
-
-  const marker = document.createElement("div");
-  marker.className = "destination-marker";
-  destinationMarker = new maplibregl.Marker({element:marker})
-    .setLngLat(position).addTo(map);
-
-  map.flyTo({center:position,zoom:15,duration:900});
-  $("routeBtn").disabled = !currentPosition;
-  $("routeList").innerHTML =
-    '<div class="route-empty">Destination selected. Calculate routes to compare your options.</div>';
-  $("routeCount").textContent = "READY";
-  $("startBtn").disabled = true;
-  message("Destination selected: " + name,"success");
-}
-
-/* ---------------- ROUTING ---------------- */
-
-function getCoordinates(route) {
-  const points = [];
-  (route.legs || []).forEach(leg => {
-    (leg.points || []).forEach(point => {
-      const lon = Number(point.longitude);
-      const lat = Number(point.latitude);
-      if (Number.isFinite(lon) && Number.isFinite(lat)) points.push([lon,lat]);
-    });
-  });
-  return points;
-}
-
-async function requestRoutes(routeType,maxAlternatives) {
-  const start = `${currentPosition[1]},${currentPosition[0]}`;
-  const end = `${destination[1]},${destination[0]}`;
-  const url = new URL(`${API}/maps/orbis/routing/calculateRoute/${start}:${end}/json`);
-
-  url.searchParams.set("apiVersion","2");
-  url.searchParams.set("key",TOMTOM_KEY);
-  url.searchParams.set("routeType",routeType);
-  url.searchParams.set("traffic","live");
-  url.searchParams.set("travelMode","car");
-  url.searchParams.set("maxAlternatives",String(maxAlternatives));
-  url.searchParams.set("alternativeType","anyRoute");
-  url.searchParams.set("sectionType","traffic");
-
-  const data = await getJSON(url.toString());
-  return (data.routes || []).map((route,index) => ({
-    raw:route,
-    type:routeType,
-    points:getCoordinates(route),
-    summary:route.summary || {},
-    id:routeType + "-" + index + "-" + Math.random().toString(36).slice(2,7)
-  })).filter(r => r.points.length > 1);
-}
-
-function routeFingerprint(route) {
-  const a = route.summary.lengthInMeters || 0;
-  const b = route.summary.travelTimeInSeconds || 0;
-  return Math.round(a/100)*100 + "-" + Math.round(b/30)*30;
-}
-
-async function calculateRoutes() {
-  if (!currentPosition) {
-    message("Connect your GPS location before calculating a route.","error");
-    locateUser();
-    return;
+ const url=apiUrl(
+  "/maps/orbis/routing/calculateRoute/"+
+  start+":"+end+"/json",
+  {
+   key:TOMTOM_KEY,
+   apiVersion:2,
+   routeType:type,
+   traffic:"live",
+   travelMode:"car",
+   maxAlternatives:alternatives,
+   alternativeType:"anyRoute",
+   sectionType:"traffic"
   }
-  if (!destination) {
-    message("Search and select a destination first.","error");
-    return;
-  }
-  if (routeBusy) return;
+ );
 
-  routeBusy = true;
-  $("routeBtn").disabled = true;
-  $("routeBtn").textContent = "COMPARING ROUTES...";
-  message("Comparing available routes with live traffic...");
+ const data=await fetchJSON(url,{"TomTom-Api-Version":"2"});
 
-  try {
-    const results = await Promise.allSettled([
-      requestRoutes("fast",3),
-      requestRoutes("short",1)
-    ]);
-
-    const combined = [];
-    results.forEach(result => {
-      if (result.status === "fulfilled") combined.push(...result.value);
-      else console.warn("A route search option was unavailable:",result.reason);
-    });
-
-    const unique = [];
-    const fingerprints = new Set();
-
-    combined.forEach(route => {
-      const key = routeFingerprint(route);
-      if (!fingerprints.has(key)) {
-        fingerprints.add(key);
-        unique.push(route);
-      }
-    });
-
-    if (!unique.length) throw new Error("No routes were returned. Try another destination.");
-
-    routes = unique.slice(0,5);
-    rankRoutes();
-    selectedRoute = 0;
-    renderRoutes();
-    drawRoutes();
-    selectRoute(0);
-    fitRoutes();
-
-    $("startBtn").disabled = false;
-    $("demoBtn").disabled = false;
-    message(`${routes.length} route option(s) found. Select the route that suits you best.`,"success");
-  } catch (error) {
-    console.error("ROAMX routing error:",error);
-    message("Route calculation failed: " + error.message,"error");
-  } finally {
-    routeBusy = false;
-    $("routeBtn").disabled = false;
-    $("routeBtn").textContent = "FIND MY BEST ROUTES →";
-  }
+ return (data.routes||[]).map((raw,index)=>({
+  raw,
+  type,
+  points:routeCoordinates(raw),
+  summary:raw.summary||{},
+  id:type+"-"+index+"-"+Math.random().toString(36).slice(2,8)
+ })).filter(r=>r.points.length>1);
 }
 
-function rankRoutes() {
-  const durations = routes.map(r => Number(r.summary.travelTimeInSeconds)||Infinity);
-  const distances = routes.map(r => Number(r.summary.lengthInMeters)||Infinity);
-  const minTime = Math.min(...durations);
-  const maxTime = Math.max(...durations);
-  const minDistance = Math.min(...distances);
-  const maxDistance = Math.max(...distances);
+function routeKey(r){
+ return Math.round((r.summary.lengthInMeters||0)/100)+"-"+
+  Math.round((r.summary.travelTimeInSeconds||0)/30);
+}
 
-  routes.forEach((route,index) => {
-    const time = durations[index];
-    const distance = distances[index];
-    const timeScore = maxTime === minTime ? 0 : (time-minTime)/(maxTime-minTime);
-    const distanceScore = maxDistance === minDistance ? 0 : (distance-minDistance)/(maxDistance-minDistance);
-    route.score = timeScore*.65 + distanceScore*.35;
+function scoreRoutes(){
+ if(!routes.length)return;
+ const times=routes.map(r=>Number(r.summary.travelTimeInSeconds)||Infinity);
+ const distances=routes.map(r=>Number(r.summary.lengthInMeters)||Infinity);
+ const minT=Math.min(...times),maxT=Math.max(...times);
+ const minD=Math.min(...distances),maxD=Math.max(...distances);
+
+ routes.forEach((r,i)=>{
+  const ts=maxT===minT?0:(times[i]-minT)/(maxT-minT);
+  const ds=maxD===minD?0:(distances[i]-minD)/(maxD-minD);
+  r.score=ts*.65+ds*.35;
+  r.fastest=times[i]===minT;
+  r.shortest=distances[i]===minD;
+ });
+
+ routes.sort((a,b)=>a.score-b.score);
+ routes.forEach((r,i)=>r.recommended=i===0);
+}
+
+async function calculateRoutes(){
+ if(!currentPosition){say("Connect GPS before calculating a route.","error");locateUser();return;}
+ if(!destination){say("Choose a destination first.","error");return;}
+ if(routeBusy)return;
+
+ routeBusy=true;
+ $("routeBtn").disabled=true;
+ $("routeBtn").textContent="CALCULATING...";
+ say("Comparing live-traffic-aware route options...");
+
+ try{
+  const responses=await Promise.allSettled([
+   requestRoute("fast",3),
+   requestRoute("short",2)
+  ]);
+
+  let combined=[];
+  responses.forEach(r=>{
+   if(r.status==="fulfilled")combined.push(...r.value);
+   else console.warn("Route option unavailable:",r.reason);
   });
 
-  routes.sort((a,b)=>a.score-b.score);
-  routes[0].recommended = true;
-  routes.forEach(r => r.fastest = r.summary.travelTimeInSeconds === Math.min(...durations));
-  routes.forEach(r => r.shortest = r.summary.lengthInMeters === Math.min(...distances));
-}
-
-function renderRoutes() {
-  const list = $("routeList");
-  list.replaceChildren();
-  $("routeCount").textContent = routes.length + " OPTIONS";
-
-  routes.forEach((route,index) => {
-    const card = document.createElement("button");
-    card.type = "button";
-    card.className = "route-card" + (index===selectedRoute?" selected":"");
-
-    const top = document.createElement("div");
-    top.className = "route-top";
-
-    const name = document.createElement("span");
-    name.className = "route-name";
-    name.textContent = route.recommended ? "ROAMX RECOMMENDED" :
-      route.fastest ? "FASTEST OPTION" :
-      route.shortest ? "SHORTER OPTION" : "ALTERNATIVE ROUTE";
-
-    const tag = document.createElement("span");
-    tag.className = "route-tag";
-    tag.textContent = route.recommended ? "BEST BALANCE" :
-      route.fastest ? "FASTEST" :
-      route.shortest ? "SHORTER" : "OPTION " + (index+1);
-
-    top.append(name,tag);
-
-    const stats = document.createElement("div");
-    stats.className = "route-stats";
-
-    const time = document.createElement("div");
-    time.className = "route-stat";
-    time.innerHTML = `<strong>${fmtDuration(route.summary.travelTimeInSeconds)}</strong><small>ESTIMATED TIME</small>`;
-
-    const distance = document.createElement("div");
-    distance.className = "route-stat";
-    distance.innerHTML = `<strong>${fmtDistance(route.summary.lengthInMeters)}</strong><small>DISTANCE</small>`;
-
-    stats.append(time,distance);
-
-    const note = document.createElement("div");
-    note.className = "route-note";
-    const delay = Number(route.summary.trafficDelayInSeconds)||0;
-    note.textContent = delay > 0
-      ? `Reported traffic delay: ${fmtDuration(delay)} · Live traffic considered`
-      : "Live-traffic-aware route calculation";
-
-    card.append(top,stats,note);
-    card.addEventListener("click",()=>selectRoute(index));
-    list.appendChild(card);
+  const unique=[];
+  const keys=new Set();
+  combined.forEach(r=>{
+   const k=routeKey(r);
+   if(!keys.has(k)){keys.add(k);unique.push(r);}
   });
-}
 
-function drawRoutes() {
-  if (!map?.getSource(ROUTE_SOURCE)) return;
-  const features = routes.map((route,index)=>({
-    type:"Feature",
-    properties:{routeId:route.id,selected:index===selectedRoute},
-    geometry:{type:"LineString",coordinates:route.points}
-  }));
-  map.getSource(ROUTE_SOURCE).setData({
-    type:"FeatureCollection",features
-  });
-}
+  if(!unique.length)throw new Error(
+   "No route was returned. Check your API permissions or try another destination."
+  );
 
-function selectRoute(index) {
-  if (!routes[index]) return;
-  selectedRoute = index;
+  routes=unique.slice(0,5);
+  scoreRoutes();
+  selectedRoute=0;
+
   drawRoutes();
   renderRoutes();
+  selectRoute(0);
+  fitRoutes();
 
-  const route = routes[index];
-  $("distance").textContent = fmtDistance(route.summary.lengthInMeters);
-  $("duration").textContent = fmtDuration(route.summary.travelTimeInSeconds);
-  $("eta").textContent = etaText(route.summary.travelTimeInSeconds||0);
-
-  message("Selected: " + (route.recommended?"Recommended route":route.fastest?"Fastest route":route.shortest?"Shorter route":"Alternative route"),"success");
+  $("startBtn").disabled=false;
+  $("demoBtn").disabled=false;
+  say(routes.length+" route options available. Choose your preferred route.","success");
+ }catch(e){
+  console.error("Routing error:",e);
+  say("Route calculation failed: "+e.message,"error");
+ }finally{
+  routeBusy=false;
+  $("routeBtn").disabled=false;
+  $("routeBtn").textContent="FIND MY BEST ROUTES →";
+ }
 }
 
-function fitRoutes() {
-  if (!map || !routes.length) return;
-  const bounds = new maplibregl.LngLatBounds();
-  routes.forEach(route=>route.points.forEach(point=>bounds.extend(point)));
-  if (!bounds.isEmpty()) map.fitBounds(bounds,{padding:90,maxZoom:16,duration:1000});
+function drawRoutes(){
+ if(!map?.getSource(ROUTE_SOURCE))return;
+
+ const features=routes.map((r,i)=>({
+  type:"Feature",
+  properties:{routeId:r.id,selected:i===selectedRoute},
+  geometry:{type:"LineString",coordinates:r.points}
+ }));
+
+ map.getSource(ROUTE_SOURCE).setData({
+  type:"FeatureCollection",features
+ });
 }
 
-/* ---------------- LIVE TRAFFIC ---------------- */
+function renderRoutes(){
+ const list=$("routeList");
+ list.replaceChildren();
+ $("routeCount").textContent=routes.length+" OPTIONS";
 
-function toggleTraffic() {
-  if (!map || !map.isStyleLoaded()) return;
+ routes.forEach((r,i)=>{
+  const card=document.createElement("button");
+  card.type="button";
+  card.className="route-card"+(i===selectedRoute?" selected":"");
 
-  if (!trafficOn) {
-    if (!map.getSource(TRAFFIC_SOURCE)) {
-      map.addSource(TRAFFIC_SOURCE,{
-        type:"raster",
-        tiles:[
-          `${API}/maps/orbis/traffic/flow/raster/tile/{z}/{x}/{y}?apiVersion=2&style=dark&tileSize=256&key=${encodeURIComponent(TOMTOM_KEY)}`
-        ],
-        tileSize:256,
-        attribution:"© TomTom Traffic"
-      });
-    }
-    if (!map.getLayer("roamx-traffic-layer")) {
-      map.addLayer({
-        id:"roamx-traffic-layer",
-        type:"raster",
-        source:TRAFFIC_SOURCE,
-        paint:{"raster-opacity":.88}
-      });
-    }
-    trafficOn = true;
-    $("trafficBtn").textContent = "TRAFFIC ON";
-    $("trafficBtn").classList.add("active");
-    message("Live traffic flow overlay enabled.","success");
-  } else {
-    if (map.getLayer("roamx-traffic-layer")) map.removeLayer("roamx-traffic-layer");
-    if (map.getSource(TRAFFIC_SOURCE)) map.removeSource(TRAFFIC_SOURCE);
-    trafficOn = false;
-    $("trafficBtn").textContent = "TRAFFIC OFF";
-    $("trafficBtn").classList.remove("active");
-    message("Traffic overlay disabled.");
-  }
+  const top=document.createElement("div");
+  top.className="route-top";
+
+  const name=document.createElement("span");
+  name.className="route-name";
+  name.textContent=r.recommended?"ROAMX RECOMMENDED":
+   r.fastest?"FASTEST OPTION":
+   r.shortest?"SHORTEST OPTION":"ALTERNATIVE ROUTE";
+
+  const tag=document.createElement("span");
+  tag.className="route-tag";
+  tag.textContent=r.recommended?"BEST BALANCE":
+   r.fastest?"FASTEST":r.shortest?"SHORTEST":"OPTION "+(i+1);
+
+  top.append(name,tag);
+
+  const stats=document.createElement("div");
+  stats.className="route-stats";
+
+  const time=document.createElement("div");
+  time.className="stat";
+  const timeValue=document.createElement("strong");
+  timeValue.textContent=fmtDuration(r.summary.travelTimeInSeconds);
+  const timeLabel=document.createElement("small");
+  timeLabel.textContent="ESTIMATED TIME";
+  time.append(timeValue,timeLabel);
+
+  const distance=document.createElement("div");
+  distance.className="stat";
+  const distanceValue=document.createElement("strong");
+  distanceValue.textContent=fmtDistance(r.summary.lengthInMeters);
+  const distanceLabel=document.createElement("small");
+  distanceLabel.textContent="DISTANCE";
+  distance.append(distanceValue,distanceLabel);
+
+  stats.append(time,distance);
+
+  const note=document.createElement("div");
+  note.className="route-note";
+  const delay=Number(r.summary.trafficDelayInSeconds)||0;
+  note.textContent=delay>0?
+   "Estimated traffic delay: "+fmtDuration(delay):
+   "Live-traffic-aware route calculation";
+
+  card.append(top,stats,note);
+  card.addEventListener("click",()=>selectRoute(i));
+  list.appendChild(card);
+ });
 }
 
-/* ---------------- GPS NAVIGATION ---------------- */
+function selectRoute(index){
+ if(!routes[index])return;
+ selectedRoute=index;
+ drawRoutes();
+ renderRoutes();
 
-function startLiveNavigation() {
-  if (!routes.length) {
-    message("Calculate and select a route first.","error");
-    return;
-  }
-  if (!navigator.geolocation) {
-    message("GPS is not supported in this browser.","error");
-    return;
-  }
-  if (!window.isSecureContext) {
-    message("Live GPS requires HTTPS. Open ROAMX on GitHub Pages.","error");
-    return;
-  }
+ const r=routes[index];
+ $("distance").textContent=fmtDistance(r.summary.lengthInMeters);
+ $("duration").textContent=fmtDuration(r.summary.travelTimeInSeconds);
+ $("eta").textContent=arrivalTime(r.summary.travelTimeInSeconds||0);
 
+ if(navMode==="idle"||navMode==="arrived"){
+  fitSelectedRoute();
+ }
+ say("Selected "+(r.recommended?"recommended":r.fastest?"fastest":r.shortest?"shortest":"alternative")+" route.","success");
+}
+
+function fitSelectedRoute(){
+ const r=routes[selectedRoute];
+ if(!r||!r.points.length)return;
+ const bounds=new maplibregl.LngLatBounds();
+ r.points.forEach(p=>bounds.extend(p));
+ map.fitBounds(bounds,{padding:85,maxZoom:16,duration:850});
+}
+
+function fitRoutes(){
+ const bounds=new maplibregl.LngLatBounds();
+ routes.forEach(r=>r.points.forEach(p=>bounds.extend(p)));
+ if(!bounds.isEmpty())map.fitBounds(bounds,{padding:85,maxZoom:16,duration:900});
+}
+
+/* DISTANCE AND GPS GEOMETRY */
+
+function haversine(a,b){
+ const rad=v=>v*Math.PI/180;
+ const dLat=rad(b[1]-a[1]);
+ const dLon=rad(b[0]-a[0]);
+ const h=Math.sin(dLat/2)**2+
+  Math.cos(rad(a[1]))*Math.cos(rad(b[1]))*
+  Math.sin(dLon/2)**2;
+ return 6371000*2*Math.atan2(Math.sqrt(h),Math.sqrt(1-h));
+}
+
+function bearing(a,b){
+ const rad=v=>v*Math.PI/180;
+ const deg=v=>(v*180/Math.PI+360)%360;
+ const y=Math.sin(rad(b[0]-a[0]))*Math.cos(rad(b[1]));
+ const x=Math.cos(rad(a[1]))*Math.sin(rad(b[1]))-
+  Math.sin(rad(a[1]))*Math.cos(rad(b[1]))*
+  Math.cos(rad(b[0]-a[0]));
+ return deg(Math.atan2(y,x));
+}
+
+function nearestOnRoute(position,points){
+ let best={distance:Infinity,point:points[0],index:0,progress:0,heading:0};
+ let cumulative=0;
+
+ for(let i=0;i<points.length-1;i++){
+  const a=points[i],b=points[i+1];
+  const lonScale=111320*Math.cos(position[1]*Math.PI/180);
+  const ax=(a[0]-position[0])*lonScale;
+  const ay=(a[1]-position[1])*111320;
+  const bx=(b[0]-position[0])*lonScale;
+  const by=(b[1]-position[1])*111320;
+  const dx=bx-ax,dy=by-ay;
+  const denom=dx*dx+dy*dy||1;
+  const t=Math.max(0,Math.min(1,-(ax*dx+ay*dy)/denom));
+  const px=ax+t*dx,py=ay+t*dy;
+  const dist=Math.hypot(px,py);
+  const length=haversine(a,b);
+
+  if(dist<best.distance){
+   best={
+    distance:dist,
+    point:[
+     a[0]+(b[0]-a[0])*t,
+     a[1]+(b[1]-a[1])*t
+    ],
+    index:i,
+    progress:cumulative+length*t,
+    heading:bearing(a,b)
+   };
+  }
+  cumulative+=length;
+ }
+ return best;
+}
+
+function remainingDistance(points,index,point){
+ let total=0;
+ if(!points.length)return 0;
+ total+=haversine(point,points[index+1]||points[points.length-1]);
+ for(let i=index+1;i<points.length-1;i++){
+  total+=haversine(points[i],points[i+1]);
+ }
+ return total;
+}
+
+/* LIVE NAVIGATION */
+
+function startLive(){
+ if(!routes.length){say("Calculate a route first.","error");return;}
+ if(!window.isSecureContext){
+  say("GPS navigation requires HTTPS. Use your GitHub Pages website.","error");
+  return;
+ }
+ if(!navigator.geolocation){say("GPS is unavailable.","error");return;}
+
+ stopNavigation(false);
+ navMode="live";
+ $("navControls").style.display="grid";
+ $("pauseBtn").textContent="PAUSE";
+ $("mapMode").textContent="LIVE GPS NAVIGATION";
+ say("Live navigation started. Waiting for GPS position updates.","success");
+
+ watchId=navigator.geolocation.watchPosition(
+  onGPSPosition,
+  err=>{
+   say(err.code===1?"GPS permission denied. Enable location access.":
+    "GPS signal unavailable. Check your device location.","error");
+  },
+  {enableHighAccuracy:true,maximumAge:1000,timeout:20000}
+ );
+}
+
+function onGPSPosition(pos){
+ if(navMode!=="live")return;
+
+ const raw=[pos.coords.longitude,pos.coords.latitude];
+ gpsAccuracy=pos.coords.accuracy;
+
+ if(gpsAccuracy>100){
+  say("GPS accuracy is weak (±"+Math.round(gpsAccuracy)+" m). Waiting for a better signal.");
+  return;
+ }
+
+ const snap=nearestOnRoute(raw,routes[selectedRoute].points);
+ const display=snap.distance<70?snap.point:raw;
+
+ currentPosition=raw;
+ updateVehicle(display,snap.heading);
+
+ const route=routes[selectedRoute];
+ const remaining=remainingDistance(route.points,snap.index,snap.point);
+ const total=Number(route.summary.lengthInMeters)||1;
+ const fraction=Math.min(1,remaining/total);
+ const seconds=(Number(route.summary.travelTimeInSeconds)||0)*fraction;
+
+ $("distance").textContent=fmtDistance(remaining);
+ $("duration").textContent=fmtDuration(seconds);
+ $("eta").textContent=remaining<20?"ARRIVED":arrivalTime(seconds);
+
+ map.easeTo({
+  center:display,
+  zoom:17,
+  bearing:snap.heading,
+  pitch:35,
+  duration:450,
+  essential:true
+ });
+
+ if(snap.distance>85)offRouteCount++;
+ else offRouteCount=0;
+
+ if(offRouteCount>=3&&Date.now()-lastReroute>25000){
+  rerouteLive();
+ }
+
+ if(haversine(raw,destination)<30){
+  $("distance").textContent="0 m";
+  $("eta").textContent="ARRIVED";
+  $("duration").textContent="0 min";
   stopNavigation(false);
-  navMode = "live";
-  $("navControls").style.display = "grid";
-  updateMapMode("LIVE GPS NAVIGATION");
-  message("Live navigation started. Waiting for GPS updates.","success");
+  $("mapMode").textContent="DESTINATION REACHED";
+  say("You have reached your destination.","success");
+ }
+}
 
-  watchId = navigator.geolocation.watchPosition(
-    onGPSPosition,
-    error => {
-      console.warn(error);
-      message(error.code===1?"GPS permission denied. Enable location access.":"GPS signal unavailable. Check your device location.","error");
-    },
-    {enableHighAccuracy:true,maximumAge:1000,timeout:20000}
+/* AUTOMATIC REROUTING */
+
+async function rerouteLive(){
+ if(navMode!=="live"||!currentPosition||!destination)return;
+ lastReroute=Date.now();
+ offRouteCount=0;
+ say("You appear to be off route. Finding an alternative...");
+
+ try{
+  const old=currentPosition;
+  const start=old[1]+","+old[0];
+  const end=destination[1]+","+destination[0];
+  const url=apiUrl(
+   "/maps/orbis/routing/calculateRoute/"+start+":"+end+"/json",
+   {
+    key:TOMTOM_KEY,apiVersion:2,routeType:"fast",
+    traffic:"live",travelMode:"car",maxAlternatives:2,
+    sectionType:"traffic"
+   }
   );
+
+  const data=await fetchJSON(url,{"TomTom-Api-Version":"2"});
+  const replacement=(data.routes||[]).map((raw,i)=>({
+   raw,type:"fast",points:routeCoordinates(raw),
+   summary:raw.summary||{},id:"reroute-"+Date.now()+"-"+i
+  })).filter(r=>r.points.length>1);
+
+  if(replacement.length){
+   routes=replacement;
+   selectedRoute=0;
+   scoreRoutes();
+   renderRoutes();
+   drawRoutes();
+   say("A new traffic-aware route has been calculated.","success");
+  }else{
+   say("No replacement route was returned. Continue carefully.");
+  }
+ }catch(e){
+  console.error("Reroute error:",e);
+  say("Automatic rerouting failed: "+e.message,"error");
+ }
 }
 
-function nearestOnRoute(position,points) {
-  let best = {distance:Infinity,point:points[0],index:0,progress:0,heading:0};
-  let cumulative = 0;
+/* DEMO MODE — VIRTUAL MOVEMENT ONLY */
 
-  for (let i=0;i<points.length-1;i++) {
-    const a=points[i],b=points[i+1];
-    const latScale=111320;
-    const lonScale=111320*Math.cos(position[1]*Math.PI/180);
-    const ax=(a[0]-position[0])*lonScale;
-    const ay=(a[1]-position[1])*latScale;
-    const bx=(b[0]-position[0])*lonScale;
-    const by=(b[1]-position[1])*latScale;
-    const dx=bx-ax,dy=by-ay;
-    const denom=dx*dx+dy*dy||1;
-    const t=Math.max(0,Math.min(1,-(ax*dx+ay*dy)/denom));
-    const px=ax+t*dx,py=ay+t*dy;
-    const dist=Math.hypot(px,py);
-    const segmentLength=haversine(a,b);
+function startDemo(){
+ if(!routes.length){say("Calculate a route first.","error");return;}
 
-    if(dist<best.distance){
-      best={
-        distance:dist,
-        point:[
-          a[0]+(b[0]-a[0])*t,
-          a[1]+(b[1]-a[1])*t
-        ],
-        index:i,
-        progress:cumulative+segmentLength*t,
-        heading:bearing(a,b)
-      };
-    }
-    cumulative+=segmentLength;
-  }
-  return best;
+ stopNavigation(false);
+ navMode="demo";
+ demoElapsed=0;
+ demoStarted=Date.now();
+
+ $("navControls").style.display="grid";
+ $("pauseBtn").textContent="PAUSE";
+ $("mapMode").textContent="DEMO SIMULATION";
+ say("Demo simulation started. This is virtual movement, not live GPS.","success");
+
+ demoTimer=setInterval(tickDemo,120);
 }
 
-function haversine(a,b) {
-  const rad=v=>v*Math.PI/180;
-  const dLat=rad(b[1]-a[1]);
-  const dLon=rad(b[0]-a[0]);
-  const h=Math.sin(dLat/2)**2+
-    Math.cos(rad(a[1]))*Math.cos(rad(b[1]))*Math.sin(dLon/2)**2;
-  return 6371000*2*Math.atan2(Math.sqrt(h),Math.sqrt(1-h));
-}
+function tickDemo(){
+ if(navMode!=="demo")return;
 
-function onGPSPosition(position) {
-  if(navMode!=="live")return;
+ const route=routes[selectedRoute];
+ const points=route.points;
+ const total=route.summary.lengthInMeters||1;
+ const travelSeconds=route.summary.travelTimeInSeconds||60;
 
-  const raw=[position.coords.longitude,position.coords.latitude];
-  const accuracy=position.coords.accuracy;
+ /* Demo uses an accelerated 3-minute trip. */
+ const demoDuration=180000;
+ const elapsed=demoElapsed+(Date.now()-demoStarted);
+ const progress=Math.min(1,elapsed/demoDuration);
+ const target=total*progress;
 
-  if(Number.isFinite(accuracy)&&accuracy>100){
-    message("GPS accuracy is weak (±"+Math.round(accuracy)+" m). Waiting for a better signal.");
-    return;
+ let cumulative=0;
+ let position=points[0];
+ let heading=0;
+ let segmentIndex=0;
+
+ for(let i=0;i<points.length-1;i++){
+  const segment=haversine(points[i],points[i+1]);
+  if(cumulative+segment>=target){
+   const t=segment?Math.max(0,Math.min(1,(target-cumulative)/segment)):0;
+   position=[
+    points[i][0]+(points[i+1][0]-points[i][0])*t,
+    points[i][1]+(points[i+1][1]-points[i][1])*t
+   ];
+   heading=bearing(points[i],points[i+1]);
+   segmentIndex=i;
+   break;
   }
+  cumulative+=segment;
+  position=points[i+1];
+  segmentIndex=i;
+ }
 
-  const previous=currentPosition;
-  currentPosition=raw;
+ updateVehicle(position,heading);
 
-  const snap=nearestOnRoute(raw,routes[selectedRoute].points);
-  const displayPoint=snap.distance<100?snap.point:raw;
+ const remaining=remainingDistance(points,segmentIndex,position);
+ const seconds=travelSeconds*(1-progress);
 
-  updateUserMarker(displayPoint,previous?bearing(previous,raw):snap.heading);
-  $("distance").textContent=fmtDistance(Math.max(0,routes[selectedRoute].summary.lengthInMeters-snap.progress));
+ $("distance").textContent=fmtDistance(remaining);
+ $("duration").textContent=fmtDuration(seconds);
+ $("eta").textContent=progress>=1?"ARRIVED":fmtDuration(seconds);
 
-  const originalTime=routes[selectedRoute].summary.travelTimeInSeconds||0;
-  const remaining=routes[selectedRoute].summary.lengthInMeters||1;
-  const remainingSeconds=originalTime*Math.max(0,1-snap.progress/remaining);
-  $("duration").textContent=fmtDuration(remainingSeconds);
-  $("eta").textContent=etaText(remainingSeconds);
+ map.easeTo({
+  center:position,zoom:16,bearing:heading,
+  duration:120,essential:true
+ });
 
-  map.easeTo({
-    center:displayPoint,
-    zoom:17,
-    bearing:snap.heading,
-    pitch:35,
-    duration:500,
-    essential:true
-  });
-
-  if(snap.distance>85)offRouteCount++;
-  else offRouteCount=0;
-
-  if(offRouteCount>=3&&Date.now()-lastReroute>25000){
-    rerouteLive();
-  }
-
-  if(haversine(raw,destination)<35){
-    navMode="arrived";
-    stopNavigation(false);
-    updateMapMode("DESTINATION REACHED");
-    message("You have reached your destination.","success");
-    $("distance").textContent="0 m";
-    $("eta").textContent="ARRIVED";
-  }
-}
-
-async function rerouteLive() {
-  if(navMode!=="live"||!currentPosition||!destination)return;
-  lastReroute=Date.now();
-  offRouteCount=0;
-  message("You are off route. Finding a better way...");
-  try {
-    const oldStart=currentPosition;
-    const oldDestination=destination;
-    const start=`${oldStart[1]},${oldStart[0]}`;
-    const end=`${oldDestination[1]},${oldDestination[0]}`;
-    const url=new URL(`${API}/maps/orbis/routing/calculateRoute/${start}:${end}/json`);
-    url.searchParams.set("apiVersion","2");
-    url.searchParams.set("key",TOMTOM_KEY);
-    url.searchParams.set("routeType","fast");
-    url.searchParams.set("traffic","live");
-    url.searchParams.set("travelMode","car");
-    url.searchParams.set("maxAlternatives","2");
-    url.searchParams.set("sectionType","traffic");
-
-    const data=await getJSON(url.toString());
-    const newRoutes=(data.routes||[]).map((raw,index)=>({
-      raw,type:"fast",points:getCoordinates(raw),summary:raw.summary||{},
-      id:"reroute-"+index+"-"+Date.now()
-    })).filter(r=>r.points.length>1);
-
-    if(newRoutes.length){
-      routes=newRoutes;
-      selectedRoute=0;
-      rankRoutes();
-      renderRoutes();
-      drawRoutes();
-      fitRoutes();
-      message("A new route has been calculated.","success");
-    }
-  } catch(error) {
-    console.error(error);
-    message("Automatic rerouting could not complete: "+error.message,"error");
-  }
-}
-
-/* ---------------- DEMO SIMULATION ---------------- */
-
-function startDemo() {
-  if(!routes.length){
-    message("Calculate a route before starting demo mode.","error");
-    return;
-  }
-
-  stopNavigation(false);
-  navMode="demo";
-  demoElapsed=0;
-  demoStart=Date.now();
-  $("navControls").style.display="grid";
-  $("pauseBtn").textContent="PAUSE";
-  updateMapMode("DEMO SIMULATION");
-  message("Demo simulation started. Virtual movement is following the selected route.","success");
-
-  demoTimer=setInterval(tickDemo,100);
-}
-
-function tickDemo() {
-  if(navMode!=="demo")return;
-
-  const route=routes[selectedRoute];
-  const points=route.points;
-  const total=Number(route.summary.lengthInMeters)||1;
-  const duration=180000;
-  const elapsed=demoElapsed+(Date.now()-demoStart);
-  const progress=Math.min(1,elapsed/duration);
-  const target=total*progress;
-
-  let cumulative=0;
-  let position=points[0];
-  let direction=0;
-
-  for(let i=0;i<points.length-1;i++){
-    const segment=haversine(points[i],points[i+1]);
-    if(cumulative+segment>=target){
-      const t=segment?Math.max(0,Math.min(1,(target-cumulative)/segment)):0;
-      position=[
-        points[i][0]+(points[i+1][0]-points[i][0])*t,
-        points[i][1]+(points[i+1][1]-points[i][1])*t
-      ];
-      direction=bearing(points[i],points[i+1]);
-      break;
-    }
-    cumulative+=segment;
-    position=points[i+1];
-  }
-
-  updateUserMarker(position,direction);
-  $("distance").textContent=fmtDistance(Math.max(0,total-target));
-  const remainingSeconds=(route.summary.travelTimeInSeconds||0)*(1-progress);
-  $("duration").textContent=fmtDuration(remainingSeconds);
-  $("eta").textContent=fmtDuration(remainingSeconds);
-
-  map.easeTo({center:position,zoom:16,bearing:direction,duration:120});
-
-  if(progress>=1){
-    clearInterval(demoTimer);
-    demoTimer=null;
-    navMode="arrived";
-    $("navControls").style.display="none";
-    updateMapMode("DEMO COMPLETE");
-    $("distance").textContent="0 m";
-    $("eta").textContent="ARRIVED";
-    $("duration").textContent="0 min";
-    message("Demo complete. Destination reached successfully.","success");
-  }
-}
-
-function pauseNavigation() {
-  if(navMode==="demo"){
-    demoElapsed+=Date.now()-demoStart;
-    clearInterval(demoTimer);
-    demoTimer=null;
-    navMode="paused";
-    $("pauseBtn").textContent="RESUME";
-    updateMapMode("DEMO PAUSED");
-    message("Demo paused.");
-  } else if(navMode==="paused"){
-    navMode="demo";
-    demoStart=Date.now();
-    $("pauseBtn").textContent="PAUSE";
-    updateMapMode("DEMO SIMULATION");
-    demoTimer=setInterval(tickDemo,100);
-    message("Demo resumed.","success");
-  }
-}
-
-function stopNavigation(showMessage=true) {
-  if(watchId!==null){
-    navigator.geolocation.clearWatch(watchId);
-    watchId=null;
-  }
-  if(demoTimer){
-    clearInterval(demoTimer);
-    demoTimer=null;
-  }
-  if(userMarker&&navMode!=="live"){
-    userMarker.remove();
-    userMarker=null;
-  }
-  navMode="idle";
+ if(progress>=1){
+  clearInterval(demoTimer);
+  demoTimer=null;
+  navMode="arrived";
   $("navControls").style.display="none";
-  updateMapMode("MAP READY");
-  if(showMessage)message("Navigation ended. Your selected route is still available.");
+  $("mapMode").textContent="DEMO COMPLETE";
+  $("distance").textContent="0 m";
+  $("duration").textContent="0 min";
+  $("eta").textContent="ARRIVED";
+  say("Demo complete — destination reached successfully.","success");
+ }
 }
 
-/* ---------------- EVENTS ---------------- */
+function pauseDemo(){
+ if(navMode==="demo"){
+  demoElapsed+=Date.now()-demoStarted;
+  clearInterval(demoTimer);
+  demoTimer=null;
+  navMode="paused";
+  $("pauseBtn").textContent="RESUME";
+  $("mapMode").textContent="DEMO PAUSED";
+  say("Demo paused.");
+ }else if(navMode==="paused"){
+  navMode="demo";
+  demoStarted=Date.now();
+  $("pauseBtn").textContent="PAUSE";
+  $("mapMode").textContent="DEMO SIMULATION";
+  demoTimer=setInterval(tickDemo,120);
+  say("Demo resumed.","success");
+ }
+}
+
+function stopNavigation(show=true){
+ if(watchId!==null){
+  navigator.geolocation.clearWatch(watchId);
+  watchId=null;
+ }
+ if(demoTimer){
+  clearInterval(demoTimer);
+  demoTimer=null;
+ }
+ navMode="idle";
+ $("navControls").style.display="none";
+ $("mapMode").textContent="MAP READY";
+
+ if(show)say("Journey ended. Your selected route is still available.");
+}
+
+/* TRAFFIC OVERLAY */
+
+function toggleTraffic(){
+ if(!map||!map.isStyleLoaded())return;
+
+ if(!trafficOn){
+  if(!map.getSource(TRAFFIC_SOURCE)){
+   map.addSource(TRAFFIC_SOURCE,{
+    type:"raster",
+    tiles:[
+     API+"/maps/orbis/traffic/flow/raster/tile/{z}/{x}/{y}?apiVersion=2&style=relative&tileSize=256&key="+encodeURIComponent(TOMTOM_KEY)
+    ],
+    tileSize:256,
+    attribution:"© TomTom Traffic"
+   });
+  }
+
+  if(!map.getLayer("traffic-layer")){
+   map.addLayer({
+    id:"traffic-layer",
+    type:"raster",
+    source:TRAFFIC_SOURCE,
+    paint:{"raster-opacity":.8}
+   });
+  }
+
+  trafficOn=true;
+  $("trafficBtn").textContent="TRAFFIC ON";
+  $("trafficBtn").classList.add("active");
+  say("Traffic flow overlay enabled.","success");
+ }else{
+  if(map.getLayer("traffic-layer"))map.removeLayer("traffic-layer");
+  if(map.getSource(TRAFFIC_SOURCE))map.removeSource(TRAFFIC_SOURCE);
+  trafficOn=false;
+  $("trafficBtn").textContent="TRAFFIC OFF";
+  $("trafficBtn").classList.remove("active");
+  say("Traffic overlay disabled.");
+ }
+}
+
+/* EVENT LISTENERS */
 
 $("searchBtn").addEventListener("click",()=>searchPlace());
-$("destination").addEventListener("keydown",event=>{
-  if(event.key==="Enter"){
-    event.preventDefault();
-    searchPlace();
-  }
-});
-$("destination").addEventListener("input",()=>{
-  destination=null;
-  if(destinationMarker){destinationMarker.remove();destinationMarker=null;}
-  $("destinationText").textContent="Choose a place to begin";
-  $("routeBtn").disabled=true;
+
+$("destination").addEventListener("keydown",e=>{
+ if(e.key==="Enter"){
+  e.preventDefault();
+  searchPlace();
+ }
 });
 
-document.querySelectorAll(".quick-chip").forEach(button=>{
-  button.addEventListener("click",()=>searchPlace(button.dataset.query));
+$("destination").addEventListener("input",()=>{
+ destination=null;
+ destinationName="";
+ $("destinationName").textContent="Choose a place to begin";
+ $("routeBtn").disabled=true;
+ $("startBtn").disabled=true;
+ $("demoBtn").disabled=true;
+ $("results").style.display="none";
+ if(destinationMarker){
+  destinationMarker.remove();
+  destinationMarker=null;
+ }
+});
+
+document.querySelectorAll(".chip").forEach(btn=>{
+ btn.addEventListener("click",()=>searchPlace(btn.dataset.q));
 });
 
 $("routeBtn").addEventListener("click",calculateRoutes);
-$("startBtn").addEventListener("click",startLiveNavigation);
+$("startBtn").addEventListener("click",startLive);
 $("demoBtn").addEventListener("click",startDemo);
-$("trafficBtn").addEventListener("click",toggleTraffic);
-$("locateBtn").addEventListener("click",locateUser);
-$("pauseBtn").addEventListener("click",pauseNavigation);
+$("pauseBtn").addEventListener("click",pauseDemo);
 $("endBtn").addEventListener("click",()=>stopNavigation(true));
+$("trafficBtn").addEventListener("click",toggleTraffic);
+$("locateBtn").addEventListener("click",()=>{
+ if(currentPosition){
+  map.flyTo({center:currentPosition,zoom:16,duration:800});
+ }else{
+  locateUser();
+ }
+});
 
-/* ---------------- START ---------------- */
+/* START */
 
+$("routeBtn").disabled=true;
 $("startBtn").disabled=true;
 $("demoBtn").disabled=true;
+
 initMap();
+
 </script>
 </body>
 </html>
