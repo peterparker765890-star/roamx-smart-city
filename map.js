@@ -1,21 +1,14 @@
 /* ==========================================
    ROAMX — LIVE NAVIGATION ENGINE
-   TomTom Orbis + MapLibre GL JS
+   TomTom Orbis + MapLibre GL
 ========================================== */
 
-// Your TomTom API key
 const TOMTOM_KEY = "qW1DnHeAfDf4JyBXEDU3NkcE4XU3xQjv";
-
-// TomTom API configuration
 const TOMTOM_BASE = "https://api.tomtom.com";
-const MAP_STYLE = "street-dark";
 
-// HTML elements
-const $ = (id) => document.getElementById(id);
+const $ = id => document.getElementById(id);
 
 const elements = {
-    locationStatus: $("locationStatus"),
-    locationText: $("locationText"),
     destination: $("destination"),
     searchBtn: $("searchBtn"),
     searchResults: $("searchResults"),
@@ -25,34 +18,30 @@ const elements = {
     distance: $("distance"),
     duration: $("duration"),
     locateBtn: $("locateBtn"),
+    locationStatus: $("locationStatus"),
+    locationText: $("locationText"),
     message: $("message"),
     trafficBtn: $("trafficBtn")
 };
 
-// Application state
 let map = null;
-
-let userPosition = null;        // [longitude, latitude]
-let destinationPosition = null; // [longitude, latitude]
-
+let userPosition = null;
+let destinationPosition = null;
 let userMarker = null;
 let destinationMarker = null;
-
 let trafficEnabled = false;
-let isSearching = false;
-let isRouting = false;
-
-const DEFAULT_CENTER = [76.9558, 11.0168]; // Coimbatore
+let searching = false;
+let routing = false;
 
 const ROUTE_SOURCE = "roamx-route";
 const ROUTE_LAYER = "roamx-route-line";
-
 const TRAFFIC_SOURCE = "roamx-traffic";
 const TRAFFIC_LAYER = "roamx-traffic-layer";
 
+const DEFAULT_CENTER = [76.9558, 11.0168];
 
 /* ==========================================
-   GENERAL HELPERS
+   HELPERS
 ========================================== */
 
 function setMessage(message, type = "normal") {
@@ -63,72 +52,55 @@ function setMessage(message, type = "normal") {
 }
 
 function setLocationStatus(title, description) {
-    if (elements.locationStatus) {
+    if (elements.locationStatus)
         elements.locationStatus.textContent = title;
-    }
 
-    if (elements.locationText) {
+    if (elements.locationText)
         elements.locationText.textContent = description;
-    }
 }
 
 function formatDistance(meters) {
     if (!Number.isFinite(meters)) return "--";
 
-    if (meters >= 1000) {
-        return `${(meters / 1000).toFixed(1)} km`;
-    }
-
-    return `${Math.round(meters)} m`;
+    return meters >= 1000
+        ? `${(meters / 1000).toFixed(1)} km`
+        : `${Math.round(meters)} m`;
 }
 
 function formatDuration(seconds) {
     if (!Number.isFinite(seconds)) return "--";
 
     const minutes = Math.round(seconds / 60);
-
-    if (minutes < 60) {
-        return `${minutes} min`;
-    }
-
     const hours = Math.floor(minutes / 60);
-    const remainingMinutes = minutes % 60;
+    const remaining = minutes % 60;
 
-    return remainingMinutes
-        ? `${hours} hr ${remainingMinutes} min`
+    if (hours === 0) return `${minutes} min`;
+
+    return remaining
+        ? `${hours} hr ${remaining} min`
         : `${hours} hr`;
 }
 
-function getErrorMessage(error) {
-    return error?.message || "An unexpected error occurred.";
-}
-
-async function fetchJSON(url, options = {}) {
-    const response = await fetch(url, options);
+async function fetchJSON(url) {
+    const response = await fetch(url);
 
     if (!response.ok) {
-        let details = "";
+        let message = `API error ${response.status}`;
 
         try {
             const data = await response.json();
-
-            details =
+            message =
                 data?.detailedError?.message ||
                 data?.error?.description ||
                 data?.message ||
-                "";
-        } catch (_) {
-            details = "";
-        }
+                message;
+        } catch (_) {}
 
-        throw new Error(
-            details || `TomTom API error: ${response.status}`
-        );
+        throw new Error(message);
     }
 
     return response.json();
 }
-
 
 /* ==========================================
    MAP INITIALIZATION
@@ -136,7 +108,7 @@ async function fetchJSON(url, options = {}) {
 
 function initializeMap() {
     if (typeof maplibregl === "undefined") {
-        setMessage("MapLibre could not be loaded. Check your internet connection.", "error");
+        setMessage("MapLibre failed to load.", "error");
         return;
     }
 
@@ -151,38 +123,30 @@ function initializeMap() {
                     type: "raster",
 
                     tiles: [
-                        `${TOMTOM_BASE}/maps/orbis/display/raster/tile/{z}/{x}/{y}?apiVersion=2&style=${MAP_STYLE}&key=${TOMTOM_KEY}`
+                        `${TOMTOM_BASE}/maps/orbis/display/raster/tile/{z}/{x}/{y}?apiVersion=2&style=street-dark&key=${TOMTOM_KEY}`
                     ],
 
                     tileSize: 256,
-
                     attribution: "© TomTom"
                 }
             },
 
-            layers: [
-                {
-                    id: "tomtom-base-layer",
-                    type: "raster",
-                    source: "tomtom-base",
-                    minzoom: 0,
-                    maxzoom: 22
-                }
-            ]
+            layers: [{
+                id: "tomtom-base-layer",
+                type: "raster",
+                source: "tomtom-base"
+            }]
         },
 
         center: DEFAULT_CENTER,
         zoom: 12,
         minZoom: 3,
         maxZoom: 20,
-
         attributionControl: false
     });
 
     map.addControl(
-        new maplibregl.NavigationControl({
-            visualizePitch: true
-        }),
+        new maplibregl.NavigationControl(),
         "top-right"
     );
 
@@ -194,52 +158,39 @@ function initializeMap() {
     );
 
     map.on("load", () => {
-        setMessage("ROAMX map connected successfully.", "success");
-
-        addRouteSource();
-
-        if (userPosition) {
-            updateUserMarker();
-        }
-
+        addRouteLayer();
+        setMessage("ROAMX map connected.", "success");
         locateUser();
     });
 
-    map.on("error", (event) => {
-        console.error("MapLibre error:", event.error || event);
+    map.on("error", event => {
+        console.error("Map error:", event.error || event);
     });
 }
 
-
 /* ==========================================
-   ROUTE SOURCE AND LAYERS
+   ROUTE LAYER
 ========================================== */
 
-function addRouteSource() {
-    if (!map || map.getSource(ROUTE_SOURCE)) return;
+function addRouteLayer() {
+    if (map.getSource(ROUTE_SOURCE)) return;
 
     map.addSource(ROUTE_SOURCE, {
         type: "geojson",
-
         data: {
             type: "FeatureCollection",
             features: []
         }
     });
 
-    // Route outline
     map.addLayer({
         id: "roamx-route-outline",
-
         type: "line",
-
         source: ROUTE_SOURCE,
-
         layout: {
             "line-join": "round",
             "line-cap": "round"
         },
-
         paint: {
             "line-color": "#080b18",
             "line-width": 9,
@@ -247,44 +198,35 @@ function addRouteSource() {
         }
     });
 
-    // Main route
     map.addLayer({
         id: ROUTE_LAYER,
-
         type: "line",
-
         source: ROUTE_SOURCE,
-
         layout: {
             "line-join": "round",
             "line-cap": "round"
         },
-
         paint: {
             "line-color": "#27d9ed",
-            "line-width": 5,
-            "line-opacity": 1
+            "line-width": 5
         }
     });
 }
 
 function clearRoute() {
-    if (!map || !map.getSource(ROUTE_SOURCE)) return;
+    if (map?.getSource(ROUTE_SOURCE)) {
+        map.getSource(ROUTE_SOURCE).setData({
+            type: "FeatureCollection",
+            features: []
+        });
+    }
 
-    map.getSource(ROUTE_SOURCE).setData({
-        type: "FeatureCollection",
-        features: []
-    });
-
-    if (elements.distance) {
+    if (elements.distance)
         elements.distance.textContent = "--";
-    }
 
-    if (elements.duration) {
+    if (elements.duration)
         elements.duration.textContent = "--";
-    }
 }
-
 
 /* ==========================================
    CURRENT LOCATION
@@ -294,10 +236,10 @@ function locateUser() {
     if (!navigator.geolocation) {
         setLocationStatus(
             "Location unavailable",
-            "Your browser does not support geolocation"
+            "Browser does not support GPS."
         );
 
-        setMessage("Geolocation is not supported by this browser.", "error");
+        setMessage("Geolocation is not supported.", "error");
         return;
     }
 
@@ -306,10 +248,10 @@ function locateUser() {
         "Waiting for GPS permission"
     );
 
-    setMessage("Requesting your current location...");
+    setMessage("Requesting current location...");
 
     navigator.geolocation.getCurrentPosition(
-        (position) => {
+        position => {
             userPosition = [
                 position.coords.longitude,
                 position.coords.latitude
@@ -317,48 +259,47 @@ function locateUser() {
 
             updateUserMarker();
 
-            if (map) {
-                map.flyTo({
-                    center: userPosition,
-                    zoom: 15,
-                    essential: true
-                });
-            }
+            map.flyTo({
+                center: userPosition,
+                zoom: 15,
+                essential: true
+            });
 
             setLocationStatus(
                 "Location connected",
                 "Your current position is available"
             );
 
-            if (elements.originText) {
-                elements.originText.textContent = "Your current location";
-            }
+            if (elements.originText)
+                elements.originText.textContent =
+                    "Your current location";
 
-            setMessage("Your location is ready.", "success");
+            setMessage("Location connected successfully.", "success");
 
             updateRouteButton();
         },
 
-        (error) => {
+        error => {
             let message = "Unable to access your location.";
 
-            if (error.code === error.PERMISSION_DENIED) {
-                message = "Location permission was denied. Enable it in browser settings.";
-            } else if (error.code === error.POSITION_UNAVAILABLE) {
+            if (error.code === 1)
+                message = "Permission denied. Allow location in browser settings.";
+
+            if (error.code === 2)
                 message = "Your current location is unavailable.";
-            } else if (error.code === error.TIMEOUT) {
-                message = "Location request timed out. Please try again.";
-            }
+
+            if (error.code === 3)
+                message = "Location request timed out. Try again.";
 
             setLocationStatus("Location not connected", message);
             setMessage(message, "error");
 
-            console.error("Geolocation error:", error);
+            console.error(error);
         },
 
         {
             enableHighAccuracy: true,
-            timeout: 15000,
+            timeout: 20000,
             maximumAge: 10000
         }
     );
@@ -372,22 +313,23 @@ function updateUserMarker() {
         return;
     }
 
-    const markerElement = document.createElement("div");
+    const marker = document.createElement("div");
 
-    markerElement.style.width = "18px";
-    markerElement.style.height = "18px";
-    markerElement.style.borderRadius = "50%";
-    markerElement.style.background = "#27d9ed";
-    markerElement.style.border = "4px solid #ffffff";
-    markerElement.style.boxShadow = "0 0 18px #27d9ed";
+    marker.style.cssText = `
+        width:18px;
+        height:18px;
+        border-radius:50%;
+        background:#27d9ed;
+        border:4px solid white;
+        box-shadow:0 0 18px #27d9ed;
+    `;
 
     userMarker = new maplibregl.Marker({
-        element: markerElement
+        element: marker
     })
         .setLngLat(userPosition)
         .addTo(map);
 }
-
 
 /* ==========================================
    DESTINATION SEARCH
@@ -397,47 +339,38 @@ async function searchDestination() {
     const query = elements.destination?.value.trim();
 
     if (!query) {
-        setMessage("Enter a destination to search.", "error");
+        setMessage("Enter a destination first.", "error");
         elements.destination?.focus();
         return;
     }
 
-    if (isSearching) return;
+    if (searching) return;
 
-    isSearching = true;
+    searching = true;
 
-    if (elements.searchBtn) {
-        elements.searchBtn.disabled = true;
-        elements.searchBtn.textContent = "SEARCHING...";
-    }
+    elements.searchBtn.disabled = true;
+    elements.searchBtn.textContent = "SEARCHING...";
 
-    if (elements.searchResults) {
-        elements.searchResults.innerHTML = "";
-    }
+    elements.searchResults.innerHTML = "";
+    elements.searchResults.style.display = "none";
 
-    setMessage("Searching for your destination...");
+    setMessage("Searching destinations...");
 
     try {
         const url = new URL(
             `${TOMTOM_BASE}/maps/orbis/places/geocode`
         );
 
+        url.searchParams.set("key", TOMTOM_KEY);
         url.searchParams.set("query", query);
         url.searchParams.set("maxResults", "6");
-        url.searchParams.set("countryCodesIso2", "IN");
+        url.searchParams.set("countryCodes", "IN");
 
-        const data = await fetchJSON(url.toString(), {
-            headers: {
-                "TomTom-Api-Key": TOMTOM_KEY,
-                "TomTom-Api-Version": "2",
-                "Attributes": "results"
-            }
-        });
-
+        const data = await fetchJSON(url.toString());
         const results = data.results || [];
 
         if (!results.length) {
-            setMessage("No matching destinations found.", "error");
+            setMessage("No destinations found.", "error");
             return;
         }
 
@@ -449,22 +382,24 @@ async function searchDestination() {
         );
 
     } catch (error) {
-        console.error("Destination search error:", error);
+        console.error(error);
 
         setMessage(
-            `Destination search failed: ${getErrorMessage(error)}`,
+            "Search failed: " + error.message,
             "error"
         );
 
     } finally {
-        isSearching = false;
+        searching = false;
 
-        if (elements.searchBtn) {
-            elements.searchBtn.disabled = false;
-            elements.searchBtn.textContent = "SEARCH DESTINATION →";
-        }
+        elements.searchBtn.disabled = false;
+        elements.searchBtn.textContent = "SEARCH DESTINATION →";
     }
 }
+
+/* ==========================================
+   SEARCH RESULTS
+========================================== */
 
 function displaySearchResults(results) {
     const container = elements.searchResults;
@@ -473,37 +408,42 @@ function displaySearchResults(results) {
 
     container.innerHTML = "";
 
-    results.forEach((result) => {
+    results.forEach(result => {
         const coordinates = result.position?.coordinates;
 
         if (!coordinates || coordinates.length < 2) return;
 
         const [longitude, latitude] = coordinates;
 
+        if (
+            !Number.isFinite(longitude) ||
+            !Number.isFinite(latitude)
+        ) return;
+
         const title =
-            result.address?.freeformAddress ||
             result.poi?.name ||
+            result.address?.freeformAddress ||
             result.address?.municipality ||
             "Unknown destination";
 
         const description =
-            result.poi?.name && result.address?.freeformAddress
-                ? result.address.freeformAddress
-                : result.type || "Location result";
+            result.address?.freeformAddress ||
+            result.type ||
+            "Location result";
 
         const button = document.createElement("button");
 
         button.type = "button";
         button.className = "result-item";
 
-        const titleElement = document.createElement("strong");
-        titleElement.textContent = title;
+        const heading = document.createElement("strong");
+        heading.textContent = title;
 
-        const descriptionElement = document.createElement("small");
-        descriptionElement.textContent = description;
+        const detail = document.createElement("small");
+        detail.textContent = description;
 
-        button.appendChild(titleElement);
-        button.appendChild(descriptionElement);
+        button.appendChild(heading);
+        button.appendChild(detail);
 
         button.addEventListener("click", () => {
             selectDestination(
@@ -515,11 +455,14 @@ function displaySearchResults(results) {
         container.appendChild(button);
     });
 
+    // FIX: MAKE RESULTS VISIBLE.
+    container.style.display =
+        container.children.length > 0 ? "block" : "none";
+
     if (!container.children.length) {
-        setMessage("No usable destination coordinates were returned.", "error");
+        setMessage("No usable destination results.", "error");
     }
 }
-
 
 /* ==========================================
    SELECT DESTINATION
@@ -528,33 +471,30 @@ function displaySearchResults(results) {
 function selectDestination(coordinates, name) {
     destinationPosition = coordinates;
 
-    if (elements.destinationText) {
+    elements.destination.value = name;
+
+    if (elements.destinationText)
         elements.destinationText.textContent = name;
-    }
 
-    if (elements.destination) {
-        elements.destination.value = name;
-    }
+    elements.searchResults.innerHTML = "";
+    elements.searchResults.style.display = "none";
 
-    if (elements.searchResults) {
-        elements.searchResults.innerHTML = "";
-    }
-
-    if (destinationMarker) {
+    if (destinationMarker)
         destinationMarker.remove();
-    }
 
-    const markerElement = document.createElement("div");
+    const marker = document.createElement("div");
 
-    markerElement.style.width = "18px";
-    markerElement.style.height = "18px";
-    markerElement.style.borderRadius = "50%";
-    markerElement.style.background = "#8657ff";
-    markerElement.style.border = "3px solid #ffffff";
-    markerElement.style.boxShadow = "0 0 18px #8657ff";
+    marker.style.cssText = `
+        width:18px;
+        height:18px;
+        border-radius:50%;
+        background:#8657ff;
+        border:3px solid white;
+        box-shadow:0 0 18px #8657ff;
+    `;
 
     destinationMarker = new maplibregl.Marker({
-        element: markerElement
+        element: marker
     })
         .setLngLat(destinationPosition)
         .addTo(map);
@@ -571,22 +511,24 @@ function selectDestination(coordinates, name) {
     setMessage("Destination selected. Calculate your route.", "success");
 }
 
+/* ==========================================
+   ROUTE BUTTON
+========================================== */
+
 function updateRouteButton() {
     if (!elements.routeBtn) return;
 
-    const ready = Boolean(userPosition && destinationPosition);
-
-    elements.routeBtn.disabled = !ready;
+    elements.routeBtn.disabled =
+        !(userPosition && destinationPosition);
 }
 
-
 /* ==========================================
-   ROUTE CALCULATION
+   CALCULATE ROUTE
 ========================================== */
 
 async function calculateRoute() {
     if (!userPosition) {
-        setMessage("Connect your current location first.", "error");
+        setMessage("Connect your location first.", "error");
         locateUser();
         return;
     }
@@ -596,127 +538,101 @@ async function calculateRoute() {
         return;
     }
 
-    if (isRouting) return;
+    if (routing) return;
 
-    isRouting = true;
+    routing = true;
 
-    if (elements.routeBtn) {
-        elements.routeBtn.disabled = true;
-        elements.routeBtn.textContent = "CALCULATING...";
-    }
+    elements.routeBtn.disabled = true;
+    elements.routeBtn.textContent = "CALCULATING...";
 
-    setMessage("Calculating the best route using live traffic...");
+    setMessage("Calculating route with live traffic...");
 
     try {
-        const origin = `${userPosition[1]},${userPosition[0]}`;
-        const destination = `${destinationPosition[1]},${destinationPosition[0]}`;
+        const origin =
+            `${userPosition[1]},${userPosition[0]}`;
 
-        const locations = `${origin}:${destination}`;
+        const destination =
+            `${destinationPosition[1]},${destinationPosition[0]}`;
 
         const url = new URL(
-            `${TOMTOM_BASE}/maps/orbis/routing/calculateRoute/${locations}/json`
+            `${TOMTOM_BASE}/maps/orbis/routing/calculateRoute/${origin}:${destination}/json`
         );
 
+        url.searchParams.set("key", TOMTOM_KEY);
         url.searchParams.set("apiVersion", "2");
         url.searchParams.set("routeType", "fast");
         url.searchParams.set("traffic", "live");
         url.searchParams.set("travelMode", "car");
         url.searchParams.set("maxAlternatives", "2");
-        url.searchParams.set("sectionType", "traffic");
-        url.searchParams.set("key", TOMTOM_KEY);
 
-        const data = await fetchJSON(url.toString(), {
-            headers: {
-                "TomTom-Api-Version": "2",
-                "Accept": "application/json"
-            }
-        });
+        const data = await fetchJSON(url.toString());
 
-        const routes = data.routes || [];
+        if (!data.routes?.length)
+            throw new Error("No route returned.");
 
-        if (!routes.length) {
-            throw new Error("No valid route was found.");
-        }
+        displayRoutes(data.routes);
 
-        displayRoutes(routes);
+        const route = data.routes[0];
+        const summary = route.summary || {};
 
-        const bestRoute = routes[0];
-        displayRouteInformation(bestRoute);
+        elements.distance.textContent =
+            formatDistance(summary.lengthInMeters);
+
+        elements.duration.textContent =
+            formatDuration(summary.travelTimeInSeconds);
 
         setMessage(
-            routes.length > 1
-                ? `${routes.length} route options calculated successfully.`
-                : "Your route has been calculated successfully.",
+            "Your route has been calculated successfully.",
             "success"
         );
 
     } catch (error) {
-        console.error("Route calculation error:", error);
+        console.error(error);
 
         setMessage(
-            `Route calculation failed: ${getErrorMessage(error)}`,
+            "Route calculation failed: " + error.message,
             "error"
         );
 
     } finally {
-        isRouting = false;
+        routing = false;
 
-        if (elements.routeBtn) {
-            elements.routeBtn.disabled = false;
-            elements.routeBtn.textContent = "CALCULATE ROUTE";
-        }
-
+        elements.routeBtn.textContent = "CALCULATE ROUTE";
         updateRouteButton();
     }
 }
 
-
 /* ==========================================
-   ROUTE GEOMETRY
+   DISPLAY ROUTE
 ========================================== */
 
-function getRouteCoordinates(route) {
-    const coordinates = [];
-
-    const legs = route.legs || [];
-
-    legs.forEach((leg) => {
-        const points = leg.points || [];
-
-        points.forEach((point) => {
-            if (
-                Number.isFinite(point.longitude) &&
-                Number.isFinite(point.latitude)
-            ) {
-                coordinates.push([
-                    point.longitude,
-                    point.latitude
-                ]);
-            }
-        });
-    });
-
-    return coordinates;
-}
-
 function displayRoutes(routes) {
-    if (!map || !map.getSource(ROUTE_SOURCE)) return;
-
     const features = [];
 
     routes.forEach((route, index) => {
-        const coordinates = getRouteCoordinates(route);
+        const coordinates = [];
+
+        (route.legs || []).forEach(leg => {
+            (leg.points || []).forEach(point => {
+                if (
+                    Number.isFinite(point.longitude) &&
+                    Number.isFinite(point.latitude)
+                ) {
+                    coordinates.push([
+                        point.longitude,
+                        point.latitude
+                    ]);
+                }
+            });
+        });
 
         if (coordinates.length < 2) return;
 
         features.push({
             type: "Feature",
-
             properties: {
-                routeIndex: index,
-                selected: index === 0
+                routeIndex: index
             },
-
             geometry: {
                 type: "LineString",
                 coordinates
@@ -724,176 +640,136 @@ function displayRoutes(routes) {
         });
     });
 
-    if (!features.length) {
-        throw new Error("The routing service returned no usable route geometry.");
-    }
+    if (!features.length)
+        throw new Error("Route geometry is unavailable.");
 
     map.getSource(ROUTE_SOURCE).setData({
         type: "FeatureCollection",
         features
     });
 
-    // Fit the map to the main route
-    const mainCoordinates = getRouteCoordinates(routes[0]);
-
     const bounds = new maplibregl.LngLatBounds();
 
-    mainCoordinates.forEach((coordinate) => {
-        bounds.extend(coordinate);
+    features[0].geometry.coordinates.forEach(point => {
+        bounds.extend(point);
     });
 
-    if (!bounds.isEmpty()) {
-        map.fitBounds(bounds, {
-            padding: {
-                top: 80,
-                bottom: 80,
-                left: 60,
-                right: 60
-            },
-
-            maxZoom: 16,
-            duration: 1200
-        });
-    }
+    map.fitBounds(bounds, {
+        padding: 70,
+        maxZoom: 16,
+        duration: 1200
+    });
 }
 
-
 /* ==========================================
-   ROUTE INFORMATION
-========================================== */
-
-function displayRouteInformation(route) {
-    const summary = route.summary || {};
-
-    const distance = summary.lengthInMeters;
-    const duration = summary.travelTimeInSeconds;
-    const delay = summary.trafficDelayInSeconds;
-
-    if (elements.distance) {
-        elements.distance.textContent = formatDistance(distance);
-    }
-
-    if (elements.duration) {
-        elements.duration.textContent = formatDuration(duration);
-    }
-
-    if (Number.isFinite(delay) && delay > 0) {
-        setMessage(
-            `Live traffic adds approximately ${formatDuration(delay)} to this route.`,
-            "success"
-        );
-    }
-}
-
-
-/* ==========================================
-   LIVE TRAFFIC OVERLAY
+   TRAFFIC OVERLAY
 ========================================== */
 
 function toggleTraffic() {
     if (!map || !map.isStyleLoaded()) {
-        setMessage("Map is still loading. Please try again.", "error");
+        setMessage("Map is still loading.", "error");
         return;
     }
 
-    trafficEnabled = !trafficEnabled;
+    if (!trafficEnabled) {
+        try {
+            enableTrafficLayer();
 
-    if (trafficEnabled) {
-        enableTrafficLayer();
+            trafficEnabled = true;
 
-        if (elements.trafficBtn) {
             elements.trafficBtn.textContent = "TRAFFIC: ON";
             elements.trafficBtn.classList.add("active");
-        }
 
-        setMessage("Live traffic overlay enabled.", "success");
+            setMessage("Traffic overlay enabled.", "success");
+
+        } catch (error) {
+            console.error(error);
+            setMessage(error.message, "error");
+        }
 
     } else {
         disableTrafficLayer();
 
-        if (elements.trafficBtn) {
-            elements.trafficBtn.textContent = "TRAFFIC: OFF";
-            elements.trafficBtn.classList.remove("active");
-        }
+        trafficEnabled = false;
 
-        setMessage("Live traffic overlay disabled.");
+        elements.trafficBtn.textContent = "TRAFFIC: OFF";
+        elements.trafficBtn.classList.remove("active");
+
+        setMessage("Traffic overlay disabled.");
     }
 }
 
 function enableTrafficLayer() {
-    if (map.getSource(TRAFFIC_SOURCE)) return;
+    if (!map.getSource(TRAFFIC_SOURCE)) {
+        map.addSource(TRAFFIC_SOURCE, {
+            type: "raster",
 
-    map.addSource(TRAFFIC_SOURCE, {
-        type: "raster",
+            tiles: [
+                `${TOMTOM_BASE}/maps/orbis/traffic/flow/raster/tile/{z}/{x}/{y}?apiVersion=2&style=dark&tileSize=256&key=${TOMTOM_KEY}`
+            ],
 
-        tiles: [
-            `${TOMTOM_BASE}/maps/orbis/traffic/flow/raster/tile/{z}/{x}/{y}?apiVersion=2&style=dark&tileSize=256&key=${TOMTOM_KEY}`
-        ],
+            tileSize: 256,
+            attribution: "© TomTom Traffic"
+        });
+    }
 
-        tileSize: 256,
+    if (!map.getLayer(TRAFFIC_LAYER)) {
+        map.addLayer({
+            id: TRAFFIC_LAYER,
+            type: "raster",
+            source: TRAFFIC_SOURCE,
 
-        attribution: "© TomTom Traffic"
-    });
-
-    map.addLayer({
-        id: TRAFFIC_LAYER,
-
-        type: "raster",
-
-        source: TRAFFIC_SOURCE,
-
-        paint: {
-            "raster-opacity": 0.85
-        }
-    });
+            paint: {
+                "raster-opacity": 0.85
+            }
+        });
+    }
 }
 
 function disableTrafficLayer() {
-    if (!map) return;
-
-    if (map.getLayer(TRAFFIC_LAYER)) {
+    if (map.getLayer(TRAFFIC_LAYER))
         map.removeLayer(TRAFFIC_LAYER);
-    }
 
-    if (map.getSource(TRAFFIC_SOURCE)) {
+    if (map.getSource(TRAFFIC_SOURCE))
         map.removeSource(TRAFFIC_SOURCE);
-    }
 }
-
 
 /* ==========================================
    EVENT LISTENERS
 ========================================== */
 
-if (elements.searchBtn) {
-    elements.searchBtn.addEventListener("click", searchDestination);
-}
+elements.searchBtn?.addEventListener(
+    "click",
+    searchDestination
+);
 
-if (elements.destination) {
-    elements.destination.addEventListener("keydown", (event) => {
+elements.destination?.addEventListener(
+    "keydown",
+    event => {
         if (event.key === "Enter") {
+            event.preventDefault();
             searchDestination();
         }
-    });
-}
+    }
+);
 
-if (elements.routeBtn) {
-    elements.routeBtn.addEventListener("click", calculateRoute);
-}
+elements.routeBtn?.addEventListener(
+    "click",
+    calculateRoute
+);
 
-if (elements.locateBtn) {
-    elements.locateBtn.addEventListener("click", locateUser);
-}
+elements.locateBtn?.addEventListener(
+    "click",
+    locateUser
+);
 
-if (elements.trafficBtn) {
-    elements.trafficBtn.addEventListener("click", toggleTraffic);
-}
-
+elements.trafficBtn?.addEventListener(
+    "click",
+    toggleTraffic
+);
 
 /* ==========================================
    START ROAMX
 ========================================== */
 
-document.addEventListener("DOMContentLoaded", () => {
-    initializeMap();
-});
+initializeMap();
