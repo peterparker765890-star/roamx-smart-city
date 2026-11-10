@@ -1,37 +1,66 @@
 /* =====================================================
    ROAMX — COMPLETE LIVE NAVIGATION ENGINE
    TomTom Orbis Maps v2 + MapLibre GL JS
-   Search | GPS | Routing | Traffic
+
+   FEATURES:
+   - Destination Search
+   - Search Result Selection
+   - Current GPS Location
+   - Live Route Calculation
+   - Distance and Estimated Time
+   - Live Traffic Overlay
 ===================================================== */
 
-/* TOMTOM CONFIGURATION */
-const TOMTOM_KEY = "qW1DnHeAfDf4JyBXEDU3NkcE4XU3xQjv";
+/* =====================================================
+   1. TOMTOM CONFIGURATION
+===================================================== */
+
+// Replace with your NEW TomTom API key.
+// Your previous key has been exposed. Rotate it first.
+const TOMTOM_KEY = "YOUR_NEW_TOMTOM_API_KEY";
+
 const TOMTOM_BASE = "https://api.tomtom.com";
 
-/* DEFAULT MAP LOCATION */
+const TOMTOM_VERSION = "2";
+
+/* DEFAULT MAP LOCATION: COIMBATORE */
 const DEFAULT_CENTER = [76.9558, 11.0168];
 
-/* HTML ELEMENTS */
+/* =====================================================
+   2. HTML ELEMENTS
+===================================================== */
+
 const $ = id => document.getElementById(id);
 
 const elements = {
     destination: $("destination"),
     searchBtn: $("searchBtn"),
     searchResults: $("searchResults"),
+
     originText: $("originText"),
     destinationText: $("destinationText"),
+
     routeBtn: $("routeBtn"),
+
     distance: $("distance"),
     duration: $("duration"),
+
     locateBtn: $("locateBtn"),
+
     locationStatus: $("locationStatus"),
     locationText: $("locationText"),
+
     message: $("message"),
+
     trafficBtn: $("trafficBtn")
 };
 
-/* APPLICATION STATE */
+/* =====================================================
+   3. APPLICATION STATE
+===================================================== */
+
 let map = null;
+
 let userPosition = null;
 let destinationPosition = null;
 
@@ -42,15 +71,17 @@ let trafficEnabled = false;
 let searching = false;
 let routing = false;
 
+let searchController = null;
+
 const ROUTE_SOURCE = "roamx-route";
 const ROUTE_LAYER = "roamx-route-line";
+const ROUTE_OUTLINE = "roamx-route-outline";
 
 const TRAFFIC_SOURCE = "roamx-traffic";
 const TRAFFIC_LAYER = "roamx-traffic-layer";
 
-
 /* =====================================================
-   1. GENERAL HELPERS
+   4. GENERAL HELPERS
 ===================================================== */
 
 function setMessage(message, type = "normal") {
@@ -84,6 +115,7 @@ function formatDuration(seconds) {
     if (!Number.isFinite(seconds)) return "--";
 
     const minutes = Math.round(seconds / 60);
+
     const hours = Math.floor(minutes / 60);
     const remaining = minutes % 60;
 
@@ -120,15 +152,26 @@ function clearRoute() {
     }
 }
 
+function getTomTomHeaders() {
+    return {
+        "TomTom-Api-Key": TOMTOM_KEY,
+        "TomTom-Api-Version": TOMTOM_VERSION,
+        "Accept": "application/json"
+    };
+}
+
 async function fetchJSON(url, options = {}) {
     const response = await fetch(url, options);
 
     const data = await response.json().catch(() => ({}));
 
     if (!response.ok) {
+        console.error("TomTom API response:", data);
+
         const error =
             data?.detailedError?.message ||
             data?.error?.description ||
+            data?.errorText ||
             data?.message ||
             `TomTom API error: ${response.status}`;
 
@@ -138,9 +181,19 @@ async function fetchJSON(url, options = {}) {
     return data;
 }
 
+function isValidCoordinates(longitude, latitude) {
+    return (
+        Number.isFinite(longitude) &&
+        Number.isFinite(latitude) &&
+        longitude >= -180 &&
+        longitude <= 180 &&
+        latitude >= -90 &&
+        latitude <= 90
+    );
+}
 
 /* =====================================================
-   2. MAP INITIALIZATION
+   5. MAP INITIALIZATION
 ===================================================== */
 
 function initializeMap() {
@@ -153,13 +206,28 @@ function initializeMap() {
         return;
     }
 
-    if (!elements.destination || !elements.searchBtn ||
-        !elements.searchResults || !elements.routeBtn) {
+    if (!elements.destination ||
+        !elements.searchBtn ||
+        !elements.searchResults ||
+        !elements.routeBtn) {
 
-        console.error("ROAMX: Required HTML elements are missing.");
+        console.error(
+            "ROAMX: Required HTML elements are missing."
+        );
 
         setMessage(
             "Some map controls are missing from map.html.",
+            "error"
+        );
+
+        return;
+    }
+
+    if (!TOMTOM_KEY ||
+        TOMTOM_KEY === "YOUR_NEW_TOMTOM_API_KEY") {
+
+        setMessage(
+            "Add your TomTom API key in map.js.",
             "error"
         );
 
@@ -175,6 +243,7 @@ function initializeMap() {
 
             sources: {
                 "tomtom-base": {
+
                     type: "raster",
 
                     tiles: [
@@ -194,6 +263,7 @@ function initializeMap() {
         },
 
         center: DEFAULT_CENTER,
+
         zoom: 12,
         minZoom: 3,
         maxZoom: 20,
@@ -228,13 +298,15 @@ function initializeMap() {
     });
 
     map.on("error", event => {
-        console.error("ROAMX Map Error:", event.error || event);
+        console.error(
+            "ROAMX Map Error:",
+            event.error || event
+        );
     });
 }
 
-
 /* =====================================================
-   3. ROUTE LAYER
+   6. ROUTE LAYER
 ===================================================== */
 
 function addRouteLayer() {
@@ -253,7 +325,7 @@ function addRouteLayer() {
 
     map.addLayer({
 
-        id: "roamx-route-outline",
+        id: ROUTE_OUTLINE,
 
         type: "line",
 
@@ -292,9 +364,8 @@ function addRouteLayer() {
     });
 }
 
-
 /* =====================================================
-   4. CURRENT LOCATION / GPS
+   7. CURRENT LOCATION / GPS
 ===================================================== */
 
 function locateUser() {
@@ -319,7 +390,9 @@ function locateUser() {
         "Waiting for GPS permission"
     );
 
-    setMessage("Requesting your current location...");
+    setMessage(
+        "Requesting your current location..."
+    );
 
     navigator.geolocation.getCurrentPosition(
 
@@ -399,9 +472,7 @@ function updateUserMarker() {
     if (!map || !userPosition) return;
 
     if (userMarker) {
-
         userMarker.setLngLat(userPosition);
-
         return;
     }
 
@@ -423,9 +494,8 @@ function updateUserMarker() {
         .addTo(map);
 }
 
-
 /* =====================================================
-   5. TOMTOM ORBIS DESTINATION SEARCH
+   8. TOMTOM ORBIS DESTINATION SEARCH
 ===================================================== */
 
 async function searchDestination() {
@@ -449,11 +519,20 @@ async function searchDestination() {
     searching = true;
 
     elements.searchBtn.disabled = true;
-    elements.searchBtn.textContent = "SEARCHING...";
+
+    elements.searchBtn.textContent =
+        "SEARCHING...";
 
     clearSearchResults();
 
     setMessage("Searching destinations...");
+
+    // Cancel any previous pending search.
+    if (searchController) {
+        searchController.abort();
+    }
+
+    searchController = new AbortController();
 
     try {
 
@@ -465,17 +544,20 @@ async function searchDestination() {
         url.searchParams.set("maxResults", "6");
         url.searchParams.set("countryCodesIso2", "IN");
 
-        const data = await fetchJSON(url.toString(), {
+        const data = await fetchJSON(
+            url.toString(),
+            {
+                method: "GET",
 
-            method: "GET",
+                headers: {
+                    ...getTomTomHeaders(),
+                    "Attributes":
+                        "results(title,position,address)"
+                },
 
-            headers: {
-                "TomTom-Api-Key": TOMTOM_KEY,
-                "TomTom-Api-Version": "2",
-                "Attributes": "results(title,position,address)",
-                "Accept": "application/json"
+                signal: searchController.signal
             }
-        });
+        );
 
         const results = data.results || [];
 
@@ -491,14 +573,31 @@ async function searchDestination() {
 
         displaySearchResults(results);
 
+        if (!elements.searchResults.children.length) {
+
+            setMessage(
+                "Results were returned without usable coordinates.",
+                "error"
+            );
+
+            return;
+        }
+
         setMessage(
-            `${results.length} destination result(s) found.`,
+            `${elements.searchResults.children.length} destination result(s) found.`,
             "success"
         );
 
     } catch (error) {
 
-        console.error("ROAMX Search Error:", error);
+        if (error.name === "AbortError") {
+            return;
+        }
+
+        console.error(
+            "ROAMX Search Error:",
+            error
+        );
 
         setMessage(
             "Search failed: " + error.message,
@@ -513,12 +612,13 @@ async function searchDestination() {
 
         elements.searchBtn.textContent =
             "SEARCH DESTINATION →";
+
+        searchController = null;
     }
 }
 
-
 /* =====================================================
-   6. DISPLAY DESTINATION RESULTS
+   9. DISPLAY DESTINATION RESULTS
 ===================================================== */
 
 function displaySearchResults(results) {
@@ -534,17 +634,15 @@ function displaySearchResults(results) {
         const coordinates =
             result.position?.coordinates;
 
-        if (!coordinates || coordinates.length < 2) {
+        if (!coordinates ||
+            coordinates.length < 2) {
             return;
         }
 
-        const longitude = coordinates[0];
-        const latitude = coordinates[1];
+        const longitude = Number(coordinates[0]);
+        const latitude = Number(coordinates[1]);
 
-        if (
-            !Number.isFinite(longitude) ||
-            !Number.isFinite(latitude)
-        ) {
+        if (!isValidCoordinates(longitude, latitude)) {
             return;
         }
 
@@ -560,9 +658,11 @@ function displaySearchResults(results) {
             address.municipality,
             address.countrySubdivision,
             address.country
-        ].filter(Boolean).join(", ") ||
-        result.type ||
-        "Location result";
+        ]
+            .filter(Boolean)
+            .join(", ") ||
+            result.type ||
+            "Location result";
 
         const button = document.createElement("button");
 
@@ -570,11 +670,9 @@ function displaySearchResults(results) {
         button.className = "result-item";
 
         const heading = document.createElement("strong");
-
         heading.textContent = title;
 
         const detail = document.createElement("small");
-
         detail.textContent = description;
 
         button.appendChild(heading);
@@ -592,25 +690,15 @@ function displaySearchResults(results) {
         container.appendChild(button);
     });
 
-    /* IMPORTANT: SHOW THE RESULTS */
-
+    // Make the search results visible.
     container.style.display =
         container.children.length > 0
             ? "block"
             : "none";
-
-    if (!container.children.length) {
-
-        setMessage(
-            "No valid destination coordinates found.",
-            "error"
-        );
-    }
 }
 
-
 /* =====================================================
-   7. SELECT DESTINATION
+   10. SELECT DESTINATION
 ===================================================== */
 
 function selectDestination(coordinates, name) {
@@ -662,9 +750,8 @@ function selectDestination(coordinates, name) {
     );
 }
 
-
 /* =====================================================
-   8. ROUTE BUTTON STATE
+   11. ROUTE BUTTON STATE
 ===================================================== */
 
 function updateRouteButton() {
@@ -675,9 +762,8 @@ function updateRouteButton() {
         !(userPosition && destinationPosition);
 }
 
-
 /* =====================================================
-   9. TOMTOM ORBIS ROUTING API
+   12. TOMTOM ORBIS ROUTING API
 ===================================================== */
 
 async function calculateRoute() {
@@ -719,6 +805,7 @@ async function calculateRoute() {
 
     try {
 
+        // TomTom routing uses latitude,longitude.
         const origin =
             `${userPosition[1]},${userPosition[0]}`;
 
@@ -737,29 +824,35 @@ async function calculateRoute() {
         url.searchParams.set("routeRepresentation", "polyline");
         url.searchParams.set("sectionType", "traffic");
 
-        const data = await fetchJSON(url.toString());
+        const data = await fetchJSON(
+            url.toString(),
+            {
+                method: "GET",
+                headers: {
+                    "Accept": "application/json"
+                }
+            }
+        );
 
         if (!data.routes || !data.routes.length) {
-
             throw new Error(
                 "TomTom did not return a route."
             );
         }
 
-        displayRoutes(data.routes);
-
         const route = data.routes[0];
 
         const summary = route.summary || {};
 
-        if (
-            !Number.isFinite(summary.lengthInMeters) ||
-            !Number.isFinite(summary.travelTimeInSeconds)
-        ) {
+        if (!Number.isFinite(summary.lengthInMeters) ||
+            !Number.isFinite(summary.travelTimeInSeconds)) {
+
             throw new Error(
                 "Route distance or travel time is missing."
             );
         }
+
+        displayRoutes(data.routes);
 
         if (elements.distance) {
             elements.distance.textContent =
@@ -783,7 +876,10 @@ async function calculateRoute() {
 
     } catch (error) {
 
-        console.error("ROAMX Routing Error:", error);
+        console.error(
+            "ROAMX Routing Error:",
+            error
+        );
 
         setMessage(
             "Route calculation failed: " + error.message,
@@ -801,9 +897,8 @@ async function calculateRoute() {
     }
 }
 
-
 /* =====================================================
-   10. DRAW ROUTE ON MAP
+   13. DRAW ROUTE ON MAP
 ===================================================== */
 
 function displayRoutes(routes) {
@@ -818,19 +913,17 @@ function displayRoutes(routes) {
 
             (leg.points || []).forEach(point => {
 
-                if (
-                    Number.isFinite(point.longitude) &&
-                    Number.isFinite(point.latitude)
-                ) {
+                const longitude = Number(point.longitude);
+                const latitude = Number(point.latitude);
+
+                if (isValidCoordinates(longitude, latitude)) {
 
                     coordinates.push([
-                        point.longitude,
-                        point.latitude
+                        longitude,
+                        latitude
                     ]);
                 }
-
             });
-
         });
 
         if (coordinates.length < 2) return;
@@ -857,7 +950,15 @@ function displayRoutes(routes) {
         );
     }
 
-    map.getSource(ROUTE_SOURCE).setData({
+    const source = map.getSource(ROUTE_SOURCE);
+
+    if (!source) {
+        throw new Error(
+            "Route map layer is not ready."
+        );
+    }
+
+    source.setData({
 
         type: "FeatureCollection",
 
@@ -884,9 +985,8 @@ function displayRoutes(routes) {
     });
 }
 
-
 /* =====================================================
-   11. LIVE TRAFFIC OVERLAY
+   14. LIVE TRAFFIC OVERLAY
 ===================================================== */
 
 function toggleTraffic() {
@@ -924,7 +1024,10 @@ function toggleTraffic() {
 
         } catch (error) {
 
-            console.error("Traffic Error:", error);
+            console.error(
+                "Traffic Error:",
+                error
+            );
 
             setMessage(
                 "Traffic error: " + error.message,
@@ -953,9 +1056,8 @@ function toggleTraffic() {
     }
 }
 
-
 /* =====================================================
-   12. ADD TRAFFIC TILES
+   15. ADD TRAFFIC TILES
 ===================================================== */
 
 function enableTrafficLayer() {
@@ -993,9 +1095,8 @@ function enableTrafficLayer() {
     }
 }
 
-
 /* =====================================================
-   13. REMOVE TRAFFIC TILES
+   16. REMOVE TRAFFIC TILES
 ===================================================== */
 
 function disableTrafficLayer() {
@@ -1009,9 +1110,8 @@ function disableTrafficLayer() {
     }
 }
 
-
 /* =====================================================
-   14. EVENT LISTENERS
+   17. EVENT LISTENERS
 ===================================================== */
 
 elements.searchBtn?.addEventListener(
@@ -1047,9 +1147,8 @@ elements.trafficBtn?.addEventListener(
     toggleTraffic
 );
 
-
 /* =====================================================
-   15. START ROAMX
+   18. START ROAMX
 ===================================================== */
 
 initializeMap();
