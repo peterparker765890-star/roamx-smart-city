@@ -1,435 +1,899 @@
-/* ==================================
-   ROAMX MAP ENGINE
-   TomTom Orbis + MapLibre GL
-================================== */
+/* ==========================================
+   ROAMX — LIVE NAVIGATION ENGINE
+   TomTom Orbis + MapLibre GL JS
+========================================== */
 
-// Replace this placeholder with your full TomTom API key.
-const TOMTOM_KEY = "YOUR_FULL_TOMTOM_API_KEY";
+// Your TomTom API key
+const TOMTOM_KEY = "qW1DnHeAfDf4JyBXEDU3NkcE4XU3xQjv";
 
+// TomTom API configuration
+const TOMTOM_BASE = "https://api.tomtom.com";
+const MAP_STYLE = "street-dark";
+
+// HTML elements
 const $ = (id) => document.getElementById(id);
 
-let userPosition = null;
-let destinationPosition = null;
-let destinationMarker = null;
+const elements = {
+    locationStatus: $("locationStatus"),
+    locationText: $("locationText"),
+    destination: $("destination"),
+    searchBtn: $("searchBtn"),
+    searchResults: $("searchResults"),
+    originText: $("originText"),
+    destinationText: $("destinationText"),
+    routeBtn: $("routeBtn"),
+    distance: $("distance"),
+    duration: $("duration"),
+    locateBtn: $("locateBtn"),
+    message: $("message"),
+    trafficBtn: $("trafficBtn")
+};
+
+// Application state
+let map = null;
+
+let userPosition = null;        // [longitude, latitude]
+let destinationPosition = null; // [longitude, latitude]
+
 let userMarker = null;
+let destinationMarker = null;
+
 let trafficEnabled = false;
+let isSearching = false;
+let isRouting = false;
 
-const DEFAULT_CENTER = [76.9558, 11.0168];
+const DEFAULT_CENTER = [76.9558, 11.0168]; // Coimbatore
 
-const map = new maplibregl.Map({
-  container: "map",
-  style: {
-    version: 8,
-    sources: {
-      tomtom: {
-        type: "raster",
-        tiles: [
-          `https://a.api.tomtom.com/maps/orbis/display/raster/tile/{z}/{x}/{y}?apiVersion=2&style=street-dark&key=${TOMTOM_KEY}`,
-          `https://b.api.tomtom.com/maps/orbis/display/raster/tile/{z}/{x}/{y}?apiVersion=2&style=street-dark&key=${TOMTOM_KEY}`,
-          `https://c.api.tomtom.com/maps/orbis/display/raster/tile/{z}/{x}/{y}?apiVersion=2&style=street-dark&key=${TOMTOM_KEY}`,
-          `https://d.api.tomtom.com/maps/orbis/display/raster/tile/{z}/{x}/{y}?apiVersion=2&style=street-dark&key=${TOMTOM_KEY}`
-        ],
-        tileSize: 256,
-        attribution: "© TomTom"
-      }
-    },
-    layers: [{
-      id: "tomtom-base",
-      type: "raster",
-      source: "tomtom"
-    }]
-  },
-  center: DEFAULT_CENTER,
-  zoom: 5,
-  attributionControl: true
-});
+const ROUTE_SOURCE = "roamx-route";
+const ROUTE_LAYER = "roamx-route-line";
 
-map.addControl(new maplibregl.NavigationControl(), "top-right");
-map.addControl(new maplibregl.ScaleControl(), "bottom-right");
+const TRAFFIC_SOURCE = "roamx-traffic";
+const TRAFFIC_LAYER = "roamx-traffic-layer";
 
-function showMessage(message) {
-  $("message").textContent = message;
+
+/* ==========================================
+   GENERAL HELPERS
+========================================== */
+
+function setMessage(message, type = "normal") {
+    if (!elements.message) return;
+
+    elements.message.textContent = message;
+    elements.message.dataset.type = type;
 }
 
-function validateKey() {
-  if (
-    !TOMTOM_KEY ||
-    TOMTOM_KEY === "YOUR_FULL_TOMTOM_API_KEY"
-  ) {
-    showMessage("Add your TomTom API key in map.js to activate live services.");
-    return false;
-  }
+function setLocationStatus(title, description) {
+    if (elements.locationStatus) {
+        elements.locationStatus.textContent = title;
+    }
 
-  return true;
+    if (elements.locationText) {
+        elements.locationText.textContent = description;
+    }
 }
 
-map.on("load", () => {
-  showMessage("ROAMX map successfully initialized.");
-});
+function formatDistance(meters) {
+    if (!Number.isFinite(meters)) return "--";
 
-// ==================================
-// CURRENT LOCATION
-// ==================================
+    if (meters >= 1000) {
+        return `${(meters / 1000).toFixed(1)} km`;
+    }
+
+    return `${Math.round(meters)} m`;
+}
+
+function formatDuration(seconds) {
+    if (!Number.isFinite(seconds)) return "--";
+
+    const minutes = Math.round(seconds / 60);
+
+    if (minutes < 60) {
+        return `${minutes} min`;
+    }
+
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+
+    return remainingMinutes
+        ? `${hours} hr ${remainingMinutes} min`
+        : `${hours} hr`;
+}
+
+function getErrorMessage(error) {
+    return error?.message || "An unexpected error occurred.";
+}
+
+async function fetchJSON(url, options = {}) {
+    const response = await fetch(url, options);
+
+    if (!response.ok) {
+        let details = "";
+
+        try {
+            const data = await response.json();
+
+            details =
+                data?.detailedError?.message ||
+                data?.error?.description ||
+                data?.message ||
+                "";
+        } catch (_) {
+            details = "";
+        }
+
+        throw new Error(
+            details || `TomTom API error: ${response.status}`
+        );
+    }
+
+    return response.json();
+}
+
+
+/* ==========================================
+   MAP INITIALIZATION
+========================================== */
+
+function initializeMap() {
+    if (typeof maplibregl === "undefined") {
+        setMessage("MapLibre could not be loaded. Check your internet connection.", "error");
+        return;
+    }
+
+    map = new maplibregl.Map({
+        container: "map",
+
+        style: {
+            version: 8,
+
+            sources: {
+                "tomtom-base": {
+                    type: "raster",
+
+                    tiles: [
+                        `${TOMTOM_BASE}/maps/orbis/display/raster/tile/{z}/{x}/{y}?apiVersion=2&style=${MAP_STYLE}&key=${TOMTOM_KEY}`
+                    ],
+
+                    tileSize: 256,
+
+                    attribution: "© TomTom"
+                }
+            },
+
+            layers: [
+                {
+                    id: "tomtom-base-layer",
+                    type: "raster",
+                    source: "tomtom-base",
+                    minzoom: 0,
+                    maxzoom: 22
+                }
+            ]
+        },
+
+        center: DEFAULT_CENTER,
+        zoom: 12,
+        minZoom: 3,
+        maxZoom: 20,
+
+        attributionControl: false
+    });
+
+    map.addControl(
+        new maplibregl.NavigationControl({
+            visualizePitch: true
+        }),
+        "top-right"
+    );
+
+    map.addControl(
+        new maplibregl.AttributionControl({
+            compact: true
+        }),
+        "bottom-right"
+    );
+
+    map.on("load", () => {
+        setMessage("ROAMX map connected successfully.", "success");
+
+        addRouteSource();
+
+        if (userPosition) {
+            updateUserMarker();
+        }
+
+        locateUser();
+    });
+
+    map.on("error", (event) => {
+        console.error("MapLibre error:", event.error || event);
+    });
+}
+
+
+/* ==========================================
+   ROUTE SOURCE AND LAYERS
+========================================== */
+
+function addRouteSource() {
+    if (!map || map.getSource(ROUTE_SOURCE)) return;
+
+    map.addSource(ROUTE_SOURCE, {
+        type: "geojson",
+
+        data: {
+            type: "FeatureCollection",
+            features: []
+        }
+    });
+
+    // Route outline
+    map.addLayer({
+        id: "roamx-route-outline",
+
+        type: "line",
+
+        source: ROUTE_SOURCE,
+
+        layout: {
+            "line-join": "round",
+            "line-cap": "round"
+        },
+
+        paint: {
+            "line-color": "#080b18",
+            "line-width": 9,
+            "line-opacity": 0.85
+        }
+    });
+
+    // Main route
+    map.addLayer({
+        id: ROUTE_LAYER,
+
+        type: "line",
+
+        source: ROUTE_SOURCE,
+
+        layout: {
+            "line-join": "round",
+            "line-cap": "round"
+        },
+
+        paint: {
+            "line-color": "#27d9ed",
+            "line-width": 5,
+            "line-opacity": 1
+        }
+    });
+}
+
+function clearRoute() {
+    if (!map || !map.getSource(ROUTE_SOURCE)) return;
+
+    map.getSource(ROUTE_SOURCE).setData({
+        type: "FeatureCollection",
+        features: []
+    });
+
+    if (elements.distance) {
+        elements.distance.textContent = "--";
+    }
+
+    if (elements.duration) {
+        elements.duration.textContent = "--";
+    }
+}
+
+
+/* ==========================================
+   CURRENT LOCATION
+========================================== */
 
 function locateUser() {
-  if (!navigator.geolocation) {
-    showMessage("Your browser does not support location services.");
-    return;
-  }
+    if (!navigator.geolocation) {
+        setLocationStatus(
+            "Location unavailable",
+            "Your browser does not support geolocation"
+        );
 
-  showMessage("Requesting your current location...");
-
-  navigator.geolocation.getCurrentPosition(
-    (position) => {
-      const { latitude, longitude } = position.coords;
-
-      userPosition = [longitude, latitude];
-
-      if (userMarker) userMarker.remove();
-
-      userMarker = new maplibregl.Marker({
-        color: "#27d9ed"
-      })
-        .setLngLat(userPosition)
-        .setPopup(
-          new maplibregl.Popup().setText("Your current location")
-        )
-        .addTo(map);
-
-      map.flyTo({
-        center: userPosition,
-        zoom: 15,
-        essential: true
-      });
-
-      $("locationStatus").textContent = "Location connected";
-      $("locationText").textContent =
-        `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
-
-      $("originText").textContent = "Current location detected";
-
-      $("routeBtn").disabled = !destinationPosition;
-
-      showMessage("Your location has been detected successfully.");
-    },
-    (error) => {
-      const messages = {
-        1: "Location permission denied. Allow location access in your browser.",
-        2: "Your current location is unavailable.",
-        3: "Location request timed out. Please try again."
-      };
-
-      showMessage(messages[error.code] || "Unable to detect location.");
-    },
-    {
-      enableHighAccuracy: true,
-      timeout: 15000,
-      maximumAge: 30000
+        setMessage("Geolocation is not supported by this browser.", "error");
+        return;
     }
-  );
+
+    setLocationStatus(
+        "Connecting location...",
+        "Waiting for GPS permission"
+    );
+
+    setMessage("Requesting your current location...");
+
+    navigator.geolocation.getCurrentPosition(
+        (position) => {
+            userPosition = [
+                position.coords.longitude,
+                position.coords.latitude
+            ];
+
+            updateUserMarker();
+
+            if (map) {
+                map.flyTo({
+                    center: userPosition,
+                    zoom: 15,
+                    essential: true
+                });
+            }
+
+            setLocationStatus(
+                "Location connected",
+                "Your current position is available"
+            );
+
+            if (elements.originText) {
+                elements.originText.textContent = "Your current location";
+            }
+
+            setMessage("Your location is ready.", "success");
+
+            updateRouteButton();
+        },
+
+        (error) => {
+            let message = "Unable to access your location.";
+
+            if (error.code === error.PERMISSION_DENIED) {
+                message = "Location permission was denied. Enable it in browser settings.";
+            } else if (error.code === error.POSITION_UNAVAILABLE) {
+                message = "Your current location is unavailable.";
+            } else if (error.code === error.TIMEOUT) {
+                message = "Location request timed out. Please try again.";
+            }
+
+            setLocationStatus("Location not connected", message);
+            setMessage(message, "error");
+
+            console.error("Geolocation error:", error);
+        },
+
+        {
+            enableHighAccuracy: true,
+            timeout: 15000,
+            maximumAge: 10000
+        }
+    );
 }
 
-$("locateBtn").addEventListener("click", locateUser);
+function updateUserMarker() {
+    if (!map || !userPosition) return;
 
-// ==================================
-// DESTINATION SEARCH
-// ==================================
+    if (userMarker) {
+        userMarker.setLngLat(userPosition);
+        return;
+    }
+
+    const markerElement = document.createElement("div");
+
+    markerElement.style.width = "18px";
+    markerElement.style.height = "18px";
+    markerElement.style.borderRadius = "50%";
+    markerElement.style.background = "#27d9ed";
+    markerElement.style.border = "4px solid #ffffff";
+    markerElement.style.boxShadow = "0 0 18px #27d9ed";
+
+    userMarker = new maplibregl.Marker({
+        element: markerElement
+    })
+        .setLngLat(userPosition)
+        .addTo(map);
+}
+
+
+/* ==========================================
+   DESTINATION SEARCH
+========================================== */
 
 async function searchDestination() {
-  const query = $("destination").value.trim();
+    const query = elements.destination?.value.trim();
 
-  if (!query) {
-    showMessage("Enter a destination first.");
-    return;
-  }
-
-  if (!validateKey()) return;
-
-  showMessage("Searching for your destination...");
-
-  try {
-    const params = new URLSearchParams({
-      query,
-      maxResults: "6",
-      geopoliticalView: "IN"
-    });
-
-    if (userPosition) {
-      params.set("position", userPosition.join(","));
+    if (!query) {
+        setMessage("Enter a destination to search.", "error");
+        elements.destination?.focus();
+        return;
     }
 
-    const response = await fetch(
-      `https://api.tomtom.com/maps/orbis/places/geocode?${params}`,
-      {
-        headers: {
-          "TomTom-Api-Version": "2",
-          "TomTom-Api-Key": TOMTOM_KEY,
-          "Attributes": "results"
+    if (isSearching) return;
+
+    isSearching = true;
+
+    if (elements.searchBtn) {
+        elements.searchBtn.disabled = true;
+        elements.searchBtn.textContent = "SEARCHING...";
+    }
+
+    if (elements.searchResults) {
+        elements.searchResults.innerHTML = "";
+    }
+
+    setMessage("Searching for your destination...");
+
+    try {
+        const url = new URL(
+            `${TOMTOM_BASE}/maps/orbis/places/geocode`
+        );
+
+        url.searchParams.set("query", query);
+        url.searchParams.set("maxResults", "6");
+        url.searchParams.set("countryCodesIso2", "IN");
+
+        const data = await fetchJSON(url.toString(), {
+            headers: {
+                "TomTom-Api-Key": TOMTOM_KEY,
+                "TomTom-Api-Version": "2",
+                "Attributes": "results"
+            }
+        });
+
+        const results = data.results || [];
+
+        if (!results.length) {
+            setMessage("No matching destinations found.", "error");
+            return;
         }
-      }
-    );
 
-    if (!response.ok) {
-      throw new Error(`Search failed (${response.status}).`);
+        displaySearchResults(results);
+
+        setMessage(
+            `${results.length} destination result(s) found.`,
+            "success"
+        );
+
+    } catch (error) {
+        console.error("Destination search error:", error);
+
+        setMessage(
+            `Destination search failed: ${getErrorMessage(error)}`,
+            "error"
+        );
+
+    } finally {
+        isSearching = false;
+
+        if (elements.searchBtn) {
+            elements.searchBtn.disabled = false;
+            elements.searchBtn.textContent = "SEARCH DESTINATION →";
+        }
     }
+}
 
-    const data = await response.json();
-    const results = data.results || [];
+function displaySearchResults(results) {
+    const container = elements.searchResults;
 
-    const container = $("searchResults");
+    if (!container) return;
+
     container.innerHTML = "";
-    container.style.display = "block";
-
-    if (!results.length) {
-      container.textContent = "No matching destinations found.";
-      return;
-    }
 
     results.forEach((result) => {
-      const button = document.createElement("button");
-      button.className = "result-item";
+        const coordinates = result.position?.coordinates;
 
-      const title = document.createElement("strong");
-      title.textContent = result.address?.freeformAddress || query;
+        if (!coordinates || coordinates.length < 2) return;
 
-      const subtitle = document.createElement("small");
-      subtitle.textContent =
-        result.address?.municipality ||
-        result.address?.country ||
-        "Location result";
+        const [longitude, latitude] = coordinates;
 
-      button.append(title, subtitle);
+        const title =
+            result.address?.freeformAddress ||
+            result.poi?.name ||
+            result.address?.municipality ||
+            "Unknown destination";
 
-      button.addEventListener("click", () => {
-        selectDestination(result);
-      });
+        const description =
+            result.poi?.name && result.address?.freeformAddress
+                ? result.address.freeformAddress
+                : result.type || "Location result";
 
-      container.appendChild(button);
+        const button = document.createElement("button");
+
+        button.type = "button";
+        button.className = "result-item";
+
+        const titleElement = document.createElement("strong");
+        titleElement.textContent = title;
+
+        const descriptionElement = document.createElement("small");
+        descriptionElement.textContent = description;
+
+        button.appendChild(titleElement);
+        button.appendChild(descriptionElement);
+
+        button.addEventListener("click", () => {
+            selectDestination(
+                [longitude, latitude],
+                title
+            );
+        });
+
+        container.appendChild(button);
     });
 
-    showMessage(`${results.length} destinations found.`);
-  } catch (error) {
-    showMessage(error.message || "Destination search failed.");
-  }
+    if (!container.children.length) {
+        setMessage("No usable destination coordinates were returned.", "error");
+    }
 }
 
-$("searchBtn").addEventListener("click", searchDestination);
 
-$("destination").addEventListener("keydown", (event) => {
-  if (event.key === "Enter") searchDestination();
-});
+/* ==========================================
+   SELECT DESTINATION
+========================================== */
 
-// ==================================
-// SELECT DESTINATION
-// ==================================
+function selectDestination(coordinates, name) {
+    destinationPosition = coordinates;
 
-function selectDestination(result) {
-  const position = result.position;
+    if (elements.destinationText) {
+        elements.destinationText.textContent = name;
+    }
 
-  if (!position) {
-    showMessage("Destination coordinates are unavailable.");
-    return;
-  }
+    if (elements.destination) {
+        elements.destination.value = name;
+    }
 
-  destinationPosition = [
-    position.lon,
-    position.lat
-  ];
+    if (elements.searchResults) {
+        elements.searchResults.innerHTML = "";
+    }
 
-  if (destinationMarker) destinationMarker.remove();
+    if (destinationMarker) {
+        destinationMarker.remove();
+    }
 
-  destinationMarker = new maplibregl.Marker({
-    color: "#8657ff"
-  })
-    .setLngLat(destinationPosition)
-    .setPopup(
-      new maplibregl.Popup().setText("Selected destination")
-    )
-    .addTo(map);
+    const markerElement = document.createElement("div");
 
-  $("destinationText").textContent =
-    result.address?.freeformAddress || "Selected destination";
+    markerElement.style.width = "18px";
+    markerElement.style.height = "18px";
+    markerElement.style.borderRadius = "50%";
+    markerElement.style.background = "#8657ff";
+    markerElement.style.border = "3px solid #ffffff";
+    markerElement.style.boxShadow = "0 0 18px #8657ff";
 
-  $("searchResults").style.display = "none";
-  $("routeBtn").disabled = !userPosition;
+    destinationMarker = new maplibregl.Marker({
+        element: markerElement
+    })
+        .setLngLat(destinationPosition)
+        .addTo(map);
 
-  map.flyTo({
-    center: destinationPosition,
-    zoom: 14
-  });
+    map.flyTo({
+        center: destinationPosition,
+        zoom: 14,
+        essential: true
+    });
 
-  showMessage(
-    userPosition
-      ? "Destination selected. Calculate your route."
-      : "Destination selected. Detect your location to calculate a route."
-  );
+    clearRoute();
+    updateRouteButton();
+
+    setMessage("Destination selected. Calculate your route.", "success");
 }
 
-// ==================================
-// ROUTE CALCULATION
-// ==================================
+function updateRouteButton() {
+    if (!elements.routeBtn) return;
+
+    const ready = Boolean(userPosition && destinationPosition);
+
+    elements.routeBtn.disabled = !ready;
+}
+
+
+/* ==========================================
+   ROUTE CALCULATION
+========================================== */
 
 async function calculateRoute() {
-  if (!validateKey()) return;
+    if (!userPosition) {
+        setMessage("Connect your current location first.", "error");
+        locateUser();
+        return;
+    }
 
-  if (!userPosition || !destinationPosition) {
-    showMessage("Select your starting location and destination.");
-    return;
-  }
+    if (!destinationPosition) {
+        setMessage("Select a destination first.", "error");
+        return;
+    }
 
-  $("routeBtn").disabled = true;
-  showMessage("Calculating the fastest route using live traffic...");
+    if (isRouting) return;
 
-  try {
-    const response = await fetch(
-      "https://api.tomtom.com/maps/orbis/routing/routes/calculate?apiVersion=3",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "TomTom-Api-Key": TOMTOM_KEY,
-          "TomTom-Api-Version": "3"
-        },
-        body: JSON.stringify({
-          origin: {
-            type: "Point",
-            coordinates: userPosition
-          },
-          destination: {
-            type: "Point",
-            coordinates: destinationPosition
-          },
-          legs: [
-            {
-              routeType: "fast"
+    isRouting = true;
+
+    if (elements.routeBtn) {
+        elements.routeBtn.disabled = true;
+        elements.routeBtn.textContent = "CALCULATING...";
+    }
+
+    setMessage("Calculating the best route using live traffic...");
+
+    try {
+        const origin = `${userPosition[1]},${userPosition[0]}`;
+        const destination = `${destinationPosition[1]},${destinationPosition[0]}`;
+
+        const locations = `${origin}:${destination}`;
+
+        const url = new URL(
+            `${TOMTOM_BASE}/maps/orbis/routing/calculateRoute/${locations}/json`
+        );
+
+        url.searchParams.set("apiVersion", "2");
+        url.searchParams.set("routeType", "fast");
+        url.searchParams.set("traffic", "live");
+        url.searchParams.set("travelMode", "car");
+        url.searchParams.set("maxAlternatives", "2");
+        url.searchParams.set("sectionType", "traffic");
+        url.searchParams.set("key", TOMTOM_KEY);
+
+        const data = await fetchJSON(url.toString(), {
+            headers: {
+                "TomTom-Api-Version": "2",
+                "Accept": "application/json"
             }
-          ],
-          traffic: "live"
-        })
-      }
-    );
+        });
 
-    if (!response.ok) {
-      throw new Error(`Route calculation failed (${response.status}).`);
-    }
+        const routes = data.routes || [];
 
-    const data = await response.json();
-    const route = data.routes?.[0];
-
-    if (!route?.path?.coordinates?.length) {
-      throw new Error("No route geometry was returned.");
-    }
-
-    const coordinates = route.path.coordinates;
-
-    if (map.getLayer("route-line")) {
-      map.removeLayer("route-line");
-    }
-
-    if (map.getSource("route-source")) {
-      map.removeSource("route-source");
-    }
-
-    map.addSource("route-source", {
-      type: "geojson",
-      data: {
-        type: "Feature",
-        properties: {},
-        geometry: {
-          type: "LineString",
-          coordinates
+        if (!routes.length) {
+            throw new Error("No valid route was found.");
         }
-      }
-    });
 
-    map.addLayer({
-      id: "route-line",
-      type: "line",
-      source: "route-source",
-      paint: {
-        "line-color": "#27d9ed",
-        "line-width": 5,
-        "line-opacity": 0.95
-      }
-    });
+        displayRoutes(routes);
 
-    const bounds = coordinates.reduce(
-      (bounds, coordinate) => bounds.extend(coordinate),
-      new maplibregl.LngLatBounds(coordinates[0], coordinates[0])
-    );
+        const bestRoute = routes[0];
+        displayRouteInformation(bestRoute);
 
-    map.fitBounds(bounds, {
-      padding: 75,
-      maxZoom: 15,
-      duration: 1000
-    });
+        setMessage(
+            routes.length > 1
+                ? `${routes.length} route options calculated successfully.`
+                : "Your route has been calculated successfully.",
+            "success"
+        );
 
-    const summary = route.summary || {};
+    } catch (error) {
+        console.error("Route calculation error:", error);
 
-    $("distance").textContent =
-      `${(summary.lengthInMeters / 1000).toFixed(1)} km`;
+        setMessage(
+            `Route calculation failed: ${getErrorMessage(error)}`,
+            "error"
+        );
 
-    $("duration").textContent =
-      `${Math.round(summary.travelTimeInSeconds / 60)} min`;
+    } finally {
+        isRouting = false;
 
-    showMessage("Your route is ready. Journey information uses live traffic.");
+        if (elements.routeBtn) {
+            elements.routeBtn.disabled = false;
+            elements.routeBtn.textContent = "CALCULATE ROUTE";
+        }
 
-  } catch (error) {
-    showMessage(error.message || "Unable to calculate route.");
-  } finally {
-    $("routeBtn").disabled = false;
-  }
+        updateRouteButton();
+    }
 }
 
-$("routeBtn").addEventListener("click", calculateRoute);
 
-// ==================================
-// LIVE TRAFFIC OVERLAY
-// ==================================
+/* ==========================================
+   ROUTE GEOMETRY
+========================================== */
 
-$("trafficBtn").addEventListener("click", () => {
-  if (!validateKey()) return;
+function getRouteCoordinates(route) {
+    const coordinates = [];
 
-  if (!map.isStyleLoaded()) {
-    showMessage("Map is still loading. Try again shortly.");
-    return;
-  }
+    const legs = route.legs || [];
 
-  if (!map.getSource("traffic-source")) {
-    map.addSource("traffic-source", {
-      type: "raster",
-      tiles: [
-        `https://a.api.tomtom.com/maps/orbis/traffic/flow/raster/tile/{z}/{x}/{y}?apiVersion=2&style=dark&key=${TOMTOM_KEY}`,
-        `https://b.api.tomtom.com/maps/orbis/traffic/flow/raster/tile/{z}/{x}/{y}?apiVersion=2&style=dark&key=${TOMTOM_KEY}`
-      ],
-      tileSize: 256,
-      attribution: "© TomTom Traffic"
+    legs.forEach((leg) => {
+        const points = leg.points || [];
+
+        points.forEach((point) => {
+            if (
+                Number.isFinite(point.longitude) &&
+                Number.isFinite(point.latitude)
+            ) {
+                coordinates.push([
+                    point.longitude,
+                    point.latitude
+                ]);
+            }
+        });
+    });
+
+    return coordinates;
+}
+
+function displayRoutes(routes) {
+    if (!map || !map.getSource(ROUTE_SOURCE)) return;
+
+    const features = [];
+
+    routes.forEach((route, index) => {
+        const coordinates = getRouteCoordinates(route);
+
+        if (coordinates.length < 2) return;
+
+        features.push({
+            type: "Feature",
+
+            properties: {
+                routeIndex: index,
+                selected: index === 0
+            },
+
+            geometry: {
+                type: "LineString",
+                coordinates
+            }
+        });
+    });
+
+    if (!features.length) {
+        throw new Error("The routing service returned no usable route geometry.");
+    }
+
+    map.getSource(ROUTE_SOURCE).setData({
+        type: "FeatureCollection",
+        features
+    });
+
+    // Fit the map to the main route
+    const mainCoordinates = getRouteCoordinates(routes[0]);
+
+    const bounds = new maplibregl.LngLatBounds();
+
+    mainCoordinates.forEach((coordinate) => {
+        bounds.extend(coordinate);
+    });
+
+    if (!bounds.isEmpty()) {
+        map.fitBounds(bounds, {
+            padding: {
+                top: 80,
+                bottom: 80,
+                left: 60,
+                right: 60
+            },
+
+            maxZoom: 16,
+            duration: 1200
+        });
+    }
+}
+
+
+/* ==========================================
+   ROUTE INFORMATION
+========================================== */
+
+function displayRouteInformation(route) {
+    const summary = route.summary || {};
+
+    const distance = summary.lengthInMeters;
+    const duration = summary.travelTimeInSeconds;
+    const delay = summary.trafficDelayInSeconds;
+
+    if (elements.distance) {
+        elements.distance.textContent = formatDistance(distance);
+    }
+
+    if (elements.duration) {
+        elements.duration.textContent = formatDuration(duration);
+    }
+
+    if (Number.isFinite(delay) && delay > 0) {
+        setMessage(
+            `Live traffic adds approximately ${formatDuration(delay)} to this route.`,
+            "success"
+        );
+    }
+}
+
+
+/* ==========================================
+   LIVE TRAFFIC OVERLAY
+========================================== */
+
+function toggleTraffic() {
+    if (!map || !map.isStyleLoaded()) {
+        setMessage("Map is still loading. Please try again.", "error");
+        return;
+    }
+
+    trafficEnabled = !trafficEnabled;
+
+    if (trafficEnabled) {
+        enableTrafficLayer();
+
+        if (elements.trafficBtn) {
+            elements.trafficBtn.textContent = "TRAFFIC: ON";
+            elements.trafficBtn.classList.add("active");
+        }
+
+        setMessage("Live traffic overlay enabled.", "success");
+
+    } else {
+        disableTrafficLayer();
+
+        if (elements.trafficBtn) {
+            elements.trafficBtn.textContent = "TRAFFIC: OFF";
+            elements.trafficBtn.classList.remove("active");
+        }
+
+        setMessage("Live traffic overlay disabled.");
+    }
+}
+
+function enableTrafficLayer() {
+    if (map.getSource(TRAFFIC_SOURCE)) return;
+
+    map.addSource(TRAFFIC_SOURCE, {
+        type: "raster",
+
+        tiles: [
+            `${TOMTOM_BASE}/maps/orbis/traffic/flow/raster/tile/{z}/{x}/{y}?apiVersion=2&style=dark&tileSize=256&key=${TOMTOM_KEY}`
+        ],
+
+        tileSize: 256,
+
+        attribution: "© TomTom Traffic"
     });
 
     map.addLayer({
-      id: "traffic-layer",
-      type: "raster",
-      source: "traffic-source",
-      paint: {
-        "raster-opacity": 0.9
-      }
+        id: TRAFFIC_LAYER,
+
+        type: "raster",
+
+        source: TRAFFIC_SOURCE,
+
+        paint: {
+            "raster-opacity": 0.85
+        }
     });
-  }
+}
 
-  trafficEnabled = !trafficEnabled;
+function disableTrafficLayer() {
+    if (!map) return;
 
-  map.setLayoutProperty(
-    "traffic-layer",
-    "visibility",
-    trafficEnabled ? "visible" : "none"
-  );
+    if (map.getLayer(TRAFFIC_LAYER)) {
+        map.removeLayer(TRAFFIC_LAYER);
+    }
 
-  $("trafficBtn").textContent =
-    trafficEnabled ? "TRAFFIC: ON" : "TRAFFIC: OFF";
+    if (map.getSource(TRAFFIC_SOURCE)) {
+        map.removeSource(TRAFFIC_SOURCE);
+    }
+}
 
-  showMessage(
-    trafficEnabled
-      ? "Live traffic flow overlay enabled."
-      : "Traffic overlay disabled."
-  );
+
+/* ==========================================
+   EVENT LISTENERS
+========================================== */
+
+if (elements.searchBtn) {
+    elements.searchBtn.addEventListener("click", searchDestination);
+}
+
+if (elements.destination) {
+    elements.destination.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+            searchDestination();
+        }
+    });
+}
+
+if (elements.routeBtn) {
+    elements.routeBtn.addEventListener("click", calculateRoute);
+}
+
+if (elements.locateBtn) {
+    elements.locateBtn.addEventListener("click", locateUser);
+}
+
+if (elements.trafficBtn) {
+    elements.trafficBtn.addEventListener("click", toggleTraffic);
+}
+
+
+/* ==========================================
+   START ROAMX
+========================================== */
+
+document.addEventListener("DOMContentLoaded", () => {
+    initializeMap();
 });
